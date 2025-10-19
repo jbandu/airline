@@ -32,6 +32,7 @@ export const Workflows: React.FC = () => {
     const { data } = await supabase
       .from('workflows')
       .select('*, domain:domains(*), subdomain:subdomains(*)')
+      .is('archived_at', null)
       .order('created_at', { ascending: false });
     if (data) setWorkflows(data);
   };

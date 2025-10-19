@@ -8,6 +8,8 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Domains } from './pages/Domains';
 import { Workflows } from './pages/Workflows';
+import { WorkflowCreate } from './pages/WorkflowCreate';
+import { WorkflowEdit } from './pages/WorkflowEdit';
 import { WorkflowDetail } from './pages/WorkflowDetail';
 import { Analytics } from './pages/Analytics';
 import { Stakeholders } from './pages/Stakeholders';
@@ -46,6 +48,26 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Workflows />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/workflows/new"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WorkflowCreate />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/workflows/:id/edit"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <WorkflowEdit />
                   </Layout>
                 </ProtectedRoute>
               }

@@ -18,7 +18,8 @@ export const Analytics: React.FC = () => {
   const loadAnalyticsData = async () => {
     const { data } = await supabase
       .from('workflows')
-      .select('*, domain:domains(name)');
+      .select('*, domain:domains(name)')
+      .is('archived_at', null);
 
     if (data) {
       setWorkflows(data);

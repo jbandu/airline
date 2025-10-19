@@ -25,7 +25,8 @@ export const Dashboard: React.FC = () => {
   const loadDashboardData = async () => {
     const { data: workflows } = await supabase
       .from('workflows')
-      .select('*, domain:domains(name)');
+      .select('*, domain:domains(name)')
+      .is('archived_at', null);
 
     if (workflows) {
       const total = workflows.length;

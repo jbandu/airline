@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Copy, Archive, Share2, MessageSquare, Paperclip, Activity } from 'lucide-react';
+import { ArrowLeft, Edit, Copy, Archive, Share2, MessageSquare, Paperclip, Activity, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { WorkflowWithRelations } from '../types/database.types';
+import { ConfirmDialog } from '../components/workflow/ConfirmDialog';
 
 type TabType = 'overview' | 'technical' | 'implementation' | 'collaboration';
 
@@ -11,6 +12,8 @@ export const WorkflowDetail: React.FC = () => {
   const navigate = useNavigate();
   const [workflow, setWorkflow] = useState<WorkflowWithRelations | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
 
   useEffect(() => {
     if (id) loadWorkflow(id);
@@ -21,8 +24,73 @@ export const WorkflowDetail: React.FC = () => {
       .from('workflows')
       .select('*, domain:domains(*), subdomain:subdomains(*)')
       .eq('id', workflowId)
+      .is('archived_at', null)
       .maybeSingle();
     if (data) setWorkflow(data);
+  };
+
+  const handleEdit = () => {
+    navigate(`/workflows/${id}/edit`);
+  };
+
+  const handleClone = async () => {
+    if (!workflow) return;
+
+    setIsCloning(true);
+    try {
+      const clonedData = {
+        name: `${workflow.name} (Copy)`,
+        description: workflow.description,
+        domain_id: workflow.domain_id,
+        subdomain_id: workflow.subdomain_id,
+        complexity: workflow.complexity,
+        agentic_potential: workflow.agentic_potential,
+        autonomy_level: workflow.autonomy_level,
+        implementation_wave: workflow.implementation_wave,
+        status: 'draft',
+        airline_type: workflow.airline_type,
+        agentic_function_type: workflow.agentic_function_type,
+        ai_enablers: workflow.ai_enablers,
+        systems_involved: workflow.systems_involved,
+        business_context: workflow.business_context,
+        expected_roi: workflow.expected_roi,
+        dependencies: workflow.dependencies,
+        parent_workflow_id: workflow.id,
+      };
+
+      const { data, error } = await supabase
+        .from('workflows')
+        .insert(clonedData)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      navigate(`/workflows/${data.id}`);
+    } catch (error) {
+      console.error('Error cloning workflow:', error);
+      alert('Failed to clone workflow. Please try again.');
+    } finally {
+      setIsCloning(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+
+    try {
+      const { error } = await supabase
+        .from('workflows')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      navigate('/workflows');
+    } catch (error) {
+      console.error('Error deleting workflow:', error);
+      alert('Failed to delete workflow. Please try again.');
+    }
   };
 
   if (!workflow) {
@@ -69,21 +137,27 @@ export const WorkflowDetail: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+          <button
+            onClick={handleEdit}
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
             <Edit className="w-4 h-4" />
             <span>Edit</span>
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
+          <button
+            onClick={handleClone}
+            disabled={isCloning}
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors disabled:opacity-50"
+          >
             <Copy className="w-4 h-4" />
-            <span>Clone</span>
+            <span>{isCloning ? 'Cloning...' : 'Clone'}</span>
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-            <Archive className="w-4 h-4" />
-            <span>Archive</span>
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-            <Share2 className="w-4 h-4" />
-            <span>Share</span>
+          <button
+            onClick={() => setShowDeleteDialog(true)}
+            className="flex items-center gap-2 px-4 py-2 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+          >
+            <Trash2 className="w-4 h-4" />
+            <span>Delete</span>
           </button>
         </div>
       </div>
@@ -320,6 +394,16 @@ export const WorkflowDetail: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={handleDelete}
+        title="Delete Workflow"
+        message="Are you sure you want to delete this workflow? This action cannot be undone and the workflow will be archived."
+        confirmText="Delete"
+        confirmButtonClass="bg-red-600 hover:bg-red-700"
+      />
     </div>
   );
 };
