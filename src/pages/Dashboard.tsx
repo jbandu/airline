@@ -82,7 +82,6 @@ export const Dashboard: React.FC = () => {
           icon={FileText}
           iconBgColor="bg-blue-100 dark:bg-blue-900/30"
           iconColor="text-blue-600 dark:text-blue-400"
-          trend={{ value: '12% from last month', isPositive: true }}
         />
         <MetricCard
           title="Quick Wins Available"
@@ -105,7 +104,6 @@ export const Dashboard: React.FC = () => {
           icon={TrendingUp}
           iconBgColor="bg-purple-100 dark:bg-purple-900/30"
           iconColor="text-purple-600 dark:text-purple-400"
-          trend={{ value: '8% from last week', isPositive: true }}
         />
       </div>
 
