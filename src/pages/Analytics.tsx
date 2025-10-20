@@ -65,11 +65,6 @@ export const Analytics: React.FC = () => {
 
   const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#0EA5E9', '#8B5CF6'];
 
-  const getWaveColor = (wave: number) => {
-    const colors = ['#2563EB', '#10B981', '#F59E0B'];
-    return colors[wave - 1] || colors[0];
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -220,12 +215,12 @@ export const Analytics: React.FC = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  label={(props: any) => `${props.name}: ${(props.percent * 100).toFixed(0)}%`}
                   outerRadius={100}
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {waveData.map((entry, index) => (
+                  {waveData.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

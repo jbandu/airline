@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter, Plus, LayoutGrid, List, Eye, Edit, Trash2 } from 'lucide-react';
+import { Search, Filter, Plus, LayoutGrid, List, Eye, Edit } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { WorkflowWithRelations } from '../types/database.types';
 
