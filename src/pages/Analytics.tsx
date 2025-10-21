@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ScatterChart, Scatter, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ReferenceLine } from 'recharts';
-import { Download, TrendingUp, Shield, Zap, Brain, Calendar, BarChart3, Network, GitBranch, Grid3x3, Database } from 'lucide-react';
+import { Download, TrendingUp, Shield, Zap, Brain, Calendar, BarChart3, Network, GitBranch, Grid3x3, Database, Clock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Workflow } from '../types/database.types';
 import { useNavigate } from 'react-router-dom';
@@ -8,8 +8,9 @@ import { OntologyTree } from '../components/visualizations/OntologyTree';
 import { KnowledgeGraph } from '../components/visualizations/KnowledgeGraph';
 import { SemanticMatrix } from '../components/visualizations/SemanticMatrix';
 import { OntologyConceptMap } from '../components/visualizations/OntologyConceptMap';
+import { KnowledgeTimeline } from '../components/visualizations/KnowledgeTimeline';
 
-type TabType = 'overview' | 'ontology' | 'knowledge' | 'semantic' | 'schema';
+type TabType = 'overview' | 'ontology' | 'knowledge' | 'semantic' | 'schema' | 'timeline';
 
 export const Analytics: React.FC = () => {
   const navigate = useNavigate();
@@ -190,6 +191,17 @@ export const Analytics: React.FC = () => {
             <Database className="w-5 h-5" />
             <span className="font-medium">Ontology Schema</span>
           </button>
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'timeline'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Clock className="w-5 h-5" />
+            <span className="font-medium">Knowledge Timeline</span>
+          </button>
         </nav>
       </div>
 
@@ -197,6 +209,7 @@ export const Analytics: React.FC = () => {
       {activeTab === 'knowledge' && <KnowledgeGraph />}
       {activeTab === 'semantic' && <SemanticMatrix />}
       {activeTab === 'schema' && <OntologyConceptMap />}
+      {activeTab === 'timeline' && <KnowledgeTimeline />}
 
       {activeTab === 'overview' && (
         <div className="space-y-6">
