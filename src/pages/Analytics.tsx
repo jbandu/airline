@@ -1,15 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { ScatterChart, Scatter, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Download, TrendingUp } from 'lucide-react';
+import { ScatterChart, Scatter, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ReferenceLine } from 'recharts';
+import { Download, TrendingUp, Shield, Zap, Brain, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Workflow } from '../types/database.types';
+import { useNavigate } from 'react-router-dom';
 
 export const Analytics: React.FC = () => {
+  const navigate = useNavigate();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [scatterData, setScatterData] = useState<any[]>([]);
   const [domainData, setDomainData] = useState<any[]>([]);
   const [waveData, setWaveData] = useState<any[]>([]);
   const [topWorkflows, setTopWorkflows] = useState<any[]>([]);
+  const [autonomyData, setAutonomyData] = useState<any[]>([]);
+  const [aiEnablersData, setAiEnablersData] = useState<any[]>([]);
+  const [timelineData, setTimelineData] = useState<any[]>([]);
 
   useEffect(() => {
     loadAnalyticsData();
@@ -25,6 +30,7 @@ export const Analytics: React.FC = () => {
       setWorkflows(data);
 
       const scatter = data.map((w) => ({
+        id: w.id,
         name: w.name,
         complexity: w.complexity,
         potential: w.agentic_potential,
@@ -60,7 +66,47 @@ export const Analytics: React.FC = () => {
           wave: w.implementation_wave,
         }));
       setTopWorkflows(top);
+
+      const autonomyCounts = [
+        { level: 'Level 1', count: data.filter((w) => w.autonomy_level === 1).length },
+        { level: 'Level 2', count: data.filter((w) => w.autonomy_level === 2).length },
+        { level: 'Level 3', count: data.filter((w) => w.autonomy_level === 3).length },
+        { level: 'Level 4', count: data.filter((w) => w.autonomy_level === 4).length },
+        { level: 'Level 5', count: data.filter((w) => w.autonomy_level === 5).length },
+      ];
+      setAutonomyData(autonomyCounts);
+
+      const aiEnablersMap: Record<string, number> = {};
+      data.forEach((w) => {
+        if (w.ai_enablers && Array.isArray(w.ai_enablers)) {
+          w.ai_enablers.forEach((enabler: string) => {
+            aiEnablersMap[enabler] = (aiEnablersMap[enabler] || 0) + 1;
+          });
+        }
+      });
+      const aiEnablers = Object.entries(aiEnablersMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+      setAiEnablersData(aiEnablers);
+
+      const timeline = [
+        { wave: 'Wave 1', workflows: data.filter((w) => w.implementation_wave === 1).length, avgComplexity: data.filter((w) => w.implementation_wave === 1).reduce((acc, w) => acc + w.complexity, 0) / (data.filter((w) => w.implementation_wave === 1).length || 1) },
+        { wave: 'Wave 2', workflows: data.filter((w) => w.implementation_wave === 2).length, avgComplexity: data.filter((w) => w.implementation_wave === 2).reduce((acc, w) => acc + w.complexity, 0) / (data.filter((w) => w.implementation_wave === 2).length || 1) },
+        { wave: 'Wave 3', workflows: data.filter((w) => w.implementation_wave === 3).length, avgComplexity: data.filter((w) => w.implementation_wave === 3).reduce((acc, w) => acc + w.complexity, 0) / (data.filter((w) => w.implementation_wave === 3).length || 1) },
+      ];
+      setTimelineData(timeline);
     }
+  };
+
+  const handleScatterClick = (data: any) => {
+    if (data && data.id) {
+      navigate(`/workflows/${data.id}`);
+    }
+  };
+
+  const exportChart = (chartName: string) => {
+    console.log(`Exporting ${chartName}...`);
   };
 
   const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#0EA5E9', '#8B5CF6'];
@@ -119,10 +165,18 @@ export const Analytics: React.FC = () => {
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Complexity vs Agentic Potential
-          </h2>
-          <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Complexity vs Agentic Potential Matrix
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Click any dot to view workflow details
+            </p>
+          </div>
+          <button
+            onClick={() => exportChart('complexity-matrix')}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
             Export Chart
           </button>
         </div>
@@ -130,6 +184,8 @@ export const Analytics: React.FC = () => {
           <ResponsiveContainer width="100%" height={400}>
             <ScatterChart>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+              <ReferenceLine x={3} stroke="#6B7280" strokeDasharray="3 3" />
+              <ReferenceLine y={3} stroke="#6B7280" strokeDasharray="3 3" />
               <XAxis
                 type="number"
                 dataKey="complexity"
@@ -156,13 +212,163 @@ export const Analytics: React.FC = () => {
                 }}
               />
               <Legend />
-              <Scatter name="Wave 1" data={scatterData.filter((d) => d.wave === 1)} fill="#2563EB" />
-              <Scatter name="Wave 2" data={scatterData.filter((d) => d.wave === 2)} fill="#10B981" />
-              <Scatter name="Wave 3" data={scatterData.filter((d) => d.wave === 3)} fill="#F59E0B" />
+              <Scatter
+                name="Wave 1"
+                data={scatterData.filter((d) => d.wave === 1)}
+                fill="#2563EB"
+                onClick={handleScatterClick}
+                cursor="pointer"
+              />
+              <Scatter
+                name="Wave 2"
+                data={scatterData.filter((d) => d.wave === 2)}
+                fill="#10B981"
+                onClick={handleScatterClick}
+                cursor="pointer"
+              />
+              <Scatter
+                name="Wave 3"
+                data={scatterData.filter((d) => d.wave === 3)}
+                fill="#F59E0B"
+                onClick={handleScatterClick}
+                cursor="pointer"
+              />
             </ScatterChart>
           </ResponsiveContainer>
         ) : (
           <div className="h-96 flex items-center justify-center text-gray-400">No data available</div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Autonomy Level Distribution
+              </h2>
+            </div>
+            <button
+              onClick={() => exportChart('autonomy-distribution')}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Export Chart
+            </button>
+          </div>
+          {autonomyData.some((d) => d.count > 0) ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={autonomyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                <XAxis dataKey="level" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgb(17, 24, 39)',
+                    border: '1px solid rgb(55, 65, 81)',
+                    borderRadius: '0.5rem',
+                    color: '#fff',
+                  }}
+                />
+                <Bar dataKey="count" fill="#F59E0B" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-80 flex items-center justify-center text-gray-400">No data available</div>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Top AI Enablers
+              </h2>
+            </div>
+            <button
+              onClick={() => exportChart('ai-enablers')}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Export Chart
+            </button>
+          </div>
+          {aiEnablersData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={aiEnablersData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                <XAxis type="number" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                <YAxis dataKey="name" type="category" tick={{ fill: '#9CA3AF', fontSize: 11 }} width={100} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgb(17, 24, 39)',
+                    border: '1px solid rgb(55, 65, 81)',
+                    borderRadius: '0.5rem',
+                    color: '#fff',
+                  }}
+                />
+                <Bar dataKey="count" fill="#8B5CF6" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-80 flex items-center justify-center text-gray-400">No data available</div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Calendar className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Implementation Timeline
+            </h2>
+          </div>
+          <button
+            onClick={() => exportChart('timeline')}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Export Chart
+          </button>
+        </div>
+        {timelineData.some((d) => d.workflows > 0) ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={timelineData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+              <XAxis dataKey="wave" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+              <YAxis yAxisId="left" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgb(17, 24, 39)',
+                  border: '1px solid rgb(55, 65, 81)',
+                  borderRadius: '0.5rem',
+                  color: '#fff',
+                }}
+              />
+              <Legend />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="workflows"
+                stroke="#2563EB"
+                strokeWidth={3}
+                dot={{ fill: '#2563EB', r: 6 }}
+                name="Workflows"
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="avgComplexity"
+                stroke="#10B981"
+                strokeWidth={3}
+                dot={{ fill: '#10B981', r: 6 }}
+                name="Avg Complexity"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-80 flex items-center justify-center text-gray-400">No data available</div>
         )}
       </div>
 
