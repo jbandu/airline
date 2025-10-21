@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { ScatterChart, Scatter, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ReferenceLine } from 'recharts';
-import { Download, TrendingUp, Shield, Zap, Brain, Calendar, BarChart3, Network, GitBranch, Grid3x3 } from 'lucide-react';
+import { Download, TrendingUp, Shield, Zap, Brain, Calendar, BarChart3, Network, GitBranch, Grid3x3, Database } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Workflow } from '../types/database.types';
 import { useNavigate } from 'react-router-dom';
 import { OntologyTree } from '../components/visualizations/OntologyTree';
 import { KnowledgeGraph } from '../components/visualizations/KnowledgeGraph';
 import { SemanticMatrix } from '../components/visualizations/SemanticMatrix';
+import { OntologyConceptMap } from '../components/visualizations/OntologyConceptMap';
 
-type TabType = 'overview' | 'ontology' | 'knowledge' | 'semantic';
+type TabType = 'overview' | 'ontology' | 'knowledge' | 'semantic' | 'schema';
 
 export const Analytics: React.FC = () => {
   const navigate = useNavigate();
@@ -178,12 +179,24 @@ export const Analytics: React.FC = () => {
             <Grid3x3 className="w-5 h-5" />
             <span className="font-medium">Semantic Matrix</span>
           </button>
+          <button
+            onClick={() => setActiveTab('schema')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'schema'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Database className="w-5 h-5" />
+            <span className="font-medium">Ontology Schema</span>
+          </button>
         </nav>
       </div>
 
       {activeTab === 'ontology' && <OntologyTree />}
       {activeTab === 'knowledge' && <KnowledgeGraph />}
       {activeTab === 'semantic' && <SemanticMatrix />}
+      {activeTab === 'schema' && <OntologyConceptMap />}
 
       {activeTab === 'overview' && (
         <div className="space-y-6">
