@@ -19,6 +19,7 @@
     "react-d3-tree": "^3.6.6",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.65.0",
+    "react-is": "^18.3.1",
     "react-router-dom": "^7.9.4",
     "recharts": "^3.3.0",
     "tslib": "^2.8.1"
