@@ -289,10 +289,21 @@ export const KnowledgeGraph: React.FC = () => {
     );
   }
 
-  if (!graphData || graphData.nodes.length === 0) {
+  if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
     return (
       <div className="flex items-center justify-center h-96">
         <p className="text-gray-600 dark:text-gray-400">No graph data available</p>
+      </div>
+    );
+  }
+
+  if (!graphData.links || graphData.links.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <p className="text-gray-600 dark:text-gray-400 mb-2">Graph data loaded but no connections found</p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">Add relationships between workflows to see connections</p>
+        </div>
       </div>
     );
   }
