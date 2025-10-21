@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { ScatterChart, Scatter, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ReferenceLine } from 'recharts';
-import { Download, TrendingUp, Shield, Zap, Brain, Calendar, BarChart3, Network, GitBranch } from 'lucide-react';
+import { Download, TrendingUp, Shield, Zap, Brain, Calendar, BarChart3, Network, GitBranch, Grid3x3 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Workflow } from '../types/database.types';
 import { useNavigate } from 'react-router-dom';
 import { OntologyTree } from '../components/visualizations/OntologyTree';
 import { KnowledgeGraph } from '../components/visualizations/KnowledgeGraph';
+import { SemanticMatrix } from '../components/visualizations/SemanticMatrix';
 
-type TabType = 'overview' | 'ontology' | 'knowledge';
+type TabType = 'overview' | 'ontology' | 'knowledge' | 'semantic';
 
 export const Analytics: React.FC = () => {
   const navigate = useNavigate();
@@ -166,11 +167,23 @@ export const Analytics: React.FC = () => {
             <GitBranch className="w-5 h-5" />
             <span className="font-medium">Knowledge Graph</span>
           </button>
+          <button
+            onClick={() => setActiveTab('semantic')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'semantic'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Grid3x3 className="w-5 h-5" />
+            <span className="font-medium">Semantic Matrix</span>
+          </button>
         </nav>
       </div>
 
       {activeTab === 'ontology' && <OntologyTree />}
       {activeTab === 'knowledge' && <KnowledgeGraph />}
+      {activeTab === 'semantic' && <SemanticMatrix />}
 
       {activeTab === 'overview' && (
         <div className="space-y-6">

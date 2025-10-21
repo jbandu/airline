@@ -29,7 +29,6 @@ export const KnowledgeGraph: React.FC = () => {
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [isSimulationRunning, setIsSimulationRunning] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -88,19 +87,6 @@ export const KnowledgeGraph: React.FC = () => {
       return 10;
     }
     return 8;
-  };
-
-  const getNodeShape = (type: string) => {
-    switch (type) {
-      case 'workflow':
-        return 'circle';
-      case 'domain':
-        return 'rect';
-      case 'stakeholder':
-        return 'diamond';
-      default:
-        return 'circle';
-    }
   };
 
   const renderGraph = () => {
@@ -195,7 +181,6 @@ export const KnowledgeGraph: React.FC = () => {
 
     node.on('click', (event, d) => {
       event.stopPropagation();
-      setSelectedNode(d);
       if (d.type === 'workflow') {
         navigate(`/workflows/${d.id}`);
       }
