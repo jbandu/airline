@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { ScatterChart, Scatter, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ReferenceLine } from 'recharts';
-import { Download, TrendingUp, Shield, Zap, Brain, Calendar } from 'lucide-react';
+import { Download, TrendingUp, Shield, Zap, Brain, Calendar, BarChart3, Network } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Workflow } from '../types/database.types';
 import { useNavigate } from 'react-router-dom';
+import { OntologyTree } from '../components/visualizations/OntologyTree';
+
+type TabType = 'overview' | 'ontology';
 
 export const Analytics: React.FC = () => {
   const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [scatterData, setScatterData] = useState<any[]>([]);
   const [domainData, setDomainData] = useState<any[]>([]);
@@ -125,6 +129,38 @@ export const Analytics: React.FC = () => {
           <span>Export Report</span>
         </button>
       </div>
+
+      <div className="border-b border-gray-200 dark:border-gray-800">
+        <nav className="flex gap-4">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'overview'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5" />
+            <span className="font-medium">Overview</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('ontology')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'ontology'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Network className="w-5 h-5" />
+            <span className="font-medium">Ontology Tree</span>
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'ontology' && <OntologyTree />}
+
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
@@ -516,6 +552,8 @@ export const Analytics: React.FC = () => {
           <div className="text-center py-8 text-gray-400">No workflows available</div>
         )}
       </div>
+        </div>
+      )}
     </div>
   );
 };
