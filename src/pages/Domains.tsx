@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { Folder, Plus, Search, TrendingUp, Layers, Activity } from 'lucide-react';
+import React, { useEffect, useState, useRef } from 'react';
+import { Folder, Plus, Search, TrendingUp, Layers, Activity, Upload, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Domain, Subdomain } from '../types/database.types';
 
 interface DomainWithStats extends Domain {
   subdomainCount: number;
   workflowCount: number;
+  icon_url?: string | null;
 }
 
 export const Domains: React.FC = () => {
@@ -14,6 +15,8 @@ export const Domains: React.FC = () => {
   const [selectedDomain, setSelectedDomain] = useState<DomainWithStats | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadData();
@@ -33,20 +36,28 @@ export const Domains: React.FC = () => {
 
         const domainsWithStats: DomainWithStats[] = await Promise.all(
           domainsResult.data.map(async (domain) => {
-            const subdomainCount = subdomainsResult.data.filter(
+            const domainSubdomains = subdomainsResult.data.filter(
               (sd) => sd.domain_id === domain.id
-            ).length;
+            );
+            const subdomainCount = domainSubdomains.length;
 
-            const { count: workflowCount } = await supabase
-              .from('workflows')
-              .select('*', { count: 'exact', head: true })
-              .eq('subdomain_id', domain.id)
-              .is('archived_at', null);
+            const subdomainIds = domainSubdomains.map(sd => sd.id);
+
+            let workflowCount = 0;
+            if (subdomainIds.length > 0) {
+              const { count } = await supabase
+                .from('workflows')
+                .select('*', { count: 'exact', head: true })
+                .in('subdomain_id', subdomainIds)
+                .is('archived_at', null);
+
+              workflowCount = count || 0;
+            }
 
             return {
               ...domain,
               subdomainCount,
-              workflowCount: workflowCount || 0,
+              workflowCount,
             };
           })
         );
@@ -92,6 +103,89 @@ export const Domains: React.FC = () => {
 
   const getDomainColor = (index: number) => {
     return domainColors[index % domainColors.length];
+  };
+
+  const handleIconUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !event.target.files[0] || !selectedDomain) return;
+
+    const file = event.target.files[0];
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file');
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Image must be less than 2MB');
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `domain-${selectedDomain.id}-${Date.now()}.${fileExt}`;
+      const filePath = `domain-icons/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('public')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('public')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('domains')
+        .update({ icon_url: publicUrl })
+        .eq('id', selectedDomain.id);
+
+      if (updateError) throw updateError;
+
+      await loadData();
+
+      const updatedDomain = domains.find(d => d.id === selectedDomain.id);
+      if (updatedDomain) {
+        setSelectedDomain(updatedDomain);
+      }
+    } catch (error: any) {
+      console.error('Error uploading icon:', error);
+      alert('Failed to upload icon: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveIcon = async () => {
+    if (!selectedDomain || !selectedDomain.icon_url) return;
+
+    try {
+      setUploading(true);
+
+      const { error } = await supabase
+        .from('domains')
+        .update({ icon_url: null })
+        .eq('id', selectedDomain.id);
+
+      if (error) throw error;
+
+      await loadData();
+
+      const updatedDomain = domains.find(d => d.id === selectedDomain.id);
+      if (updatedDomain) {
+        setSelectedDomain(updatedDomain);
+      }
+    } catch (error: any) {
+      console.error('Error removing icon:', error);
+      alert('Failed to remove icon: ' + error.message);
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -186,9 +280,7 @@ export const Domains: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredDomains.map((domain, index) => {
-            const domainSubdomains = getSubdomainsForDomain(domain.id);
-            return (
+          {filteredDomains.map((domain, index) => (
               <div
                 key={domain.id}
                 className="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
@@ -198,9 +290,15 @@ export const Domains: React.FC = () => {
 
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div className={`w-12 h-12 bg-gradient-to-br ${getDomainColor(index)} rounded-xl flex items-center justify-center shadow-lg`}>
-                      <Folder className="w-6 h-6 text-white" />
-                    </div>
+                    {domain.icon_url ? (
+                      <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg">
+                        <img src={domain.icon_url} alt={domain.name} className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className={`w-12 h-12 bg-gradient-to-br ${getDomainColor(index)} rounded-xl flex items-center justify-center shadow-lg`}>
+                        <Folder className="w-6 h-6 text-white" />
+                      </div>
+                    )}
                   </div>
 
                   <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors min-h-[3.5rem]">
@@ -223,8 +321,7 @@ export const Domains: React.FC = () => {
                   </div>
                 </div>
               </div>
-            );
-          })}
+          ))}
         </div>
       )}
 
@@ -245,6 +342,52 @@ export const Domains: React.FC = () => {
             </div>
 
             <div className="p-6 space-y-6">
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-3">Domain Icon</label>
+                <div className="flex items-center gap-4">
+                  {selectedDomain.icon_url ? (
+                    <div className="relative group">
+                      <img
+                        src={selectedDomain.icon_url}
+                        alt={selectedDomain.name}
+                        className="w-20 h-20 rounded-xl object-cover shadow-lg"
+                      />
+                      <button
+                        onClick={handleRemoveIcon}
+                        disabled={uploading}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
+                      <Folder className="w-10 h-10 text-gray-400" />
+                    </div>
+                  )}
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleIconUpload}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={uploading}
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>{uploading ? 'Uploading...' : selectedDomain.icon_url ? 'Change Icon' : 'Upload Icon'}</span>
+                    </button>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                      Max 2MB. JPG, PNG, or SVG.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Description</label>
                 <p className="text-gray-600 dark:text-gray-400">
