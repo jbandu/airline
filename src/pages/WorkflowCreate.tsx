@@ -110,12 +110,55 @@ export const WorkflowCreate: React.FC = () => {
   const onSubmit = async (data: WorkflowFormData) => {
     setIsSaving(true);
     try {
-      const { error } = await supabase.from('workflows').insert({
-        ...data,
-        created_by: user?.id,
-      });
+      const { data: workflowData, error: workflowError } = await supabase
+        .from('workflows')
+        .insert({
+          name: data.name,
+          subdomain_id: data.subdomain_id,
+          summary: data.description,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (workflowError) throw workflowError;
+
+      const { data: subdomain } = await supabase
+        .from('subdomains')
+        .select('name, domain:domains(name)')
+        .eq('id', data.subdomain_id)
+        .single();
+
+      const { data: versionData, error: versionError } = await supabase
+        .from('workflow_versions')
+        .insert({
+          workflow_id: workflowData.id,
+          status: data.status,
+          domain: subdomain?.domain?.name || '',
+          subdomain: subdomain?.name || '',
+          workflow_name: data.name,
+          workflow_description: data.description,
+          complexity: data.complexity,
+          agentic_potential: data.agentic_potential,
+          autonomy_level: data.autonomy_level,
+          implementation_wave: data.implementation_wave,
+          agentic_function_type: data.agentic_function_type,
+          ai_enabler_type: data.ai_enablers?.[0] || null,
+          operational_context: data.business_context,
+          expected_roi_levers: data.expected_roi,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+
+      if (versionError) throw versionError;
+
+      const { error: updateError } = await supabase
+        .from('workflows')
+        .update({ current_version_id: versionData.id })
+        .eq('id', workflowData.id);
+
+      if (updateError) throw updateError;
 
       clearDraft();
       navigate('/workflows');
