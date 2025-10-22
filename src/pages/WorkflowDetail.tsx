@@ -22,7 +22,7 @@ export const WorkflowDetail: React.FC = () => {
   const loadWorkflow = async (workflowId: string) => {
     const { data } = await supabase
       .from('workflows')
-      .select('*, domain:domains(*), subdomain:subdomains(*)')
+      .select('*')
       .eq('id', workflowId)
       .is('archived_at', null)
       .maybeSingle();

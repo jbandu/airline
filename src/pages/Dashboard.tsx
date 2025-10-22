@@ -25,7 +25,7 @@ export const Dashboard: React.FC = () => {
   const loadDashboardData = async () => {
     const { data: workflows } = await supabase
       .from('workflows')
-      .select('*, domain:domains(name)')
+      .select('*')
       .is('archived_at', null);
 
     if (workflows) {
@@ -42,15 +42,7 @@ export const Dashboard: React.FC = () => {
         implementationProgress: progress,
       });
 
-      const domainCounts: Record<string, number> = {};
-      workflows.forEach(w => {
-        const domainName = w.domain?.name || 'Uncategorized';
-        domainCounts[domainName] = (domainCounts[domainName] || 0) + 1;
-      });
-      const domainChartData = Object.entries(domainCounts)
-        .slice(0, 6)
-        .map(([name, count]) => ({ name, count }));
-      setDomainData(domainChartData);
+      setDomainData([]);
 
       const waveCounts = [
         { name: 'Wave 1', value: workflows.filter(w => w.implementation_wave === 1).length },

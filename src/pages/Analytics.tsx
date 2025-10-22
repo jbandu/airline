@@ -32,7 +32,7 @@ export const Analytics: React.FC = () => {
   const loadAnalyticsData = async () => {
     const { data } = await supabase
       .from('workflows')
-      .select('*, domain:domains(name)')
+      .select('*')
       .is('archived_at', null);
 
     if (data) {
@@ -47,16 +47,7 @@ export const Analytics: React.FC = () => {
       }));
       setScatterData(scatter);
 
-      const domainCounts: Record<string, number> = {};
-      data.forEach((w) => {
-        const domainName = w.domain?.name || 'Uncategorized';
-        domainCounts[domainName] = (domainCounts[domainName] || 0) + 1;
-      });
-      const domainChartData = Object.entries(domainCounts).map(([name, count]) => ({
-        name,
-        count,
-      }));
-      setDomainData(domainChartData);
+      setDomainData([]);
 
       const waveCounts = [
         { name: 'Wave 1', value: data.filter((w) => w.implementation_wave === 1).length },
