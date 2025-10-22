@@ -4,12 +4,14 @@ import { ArrowLeft, Edit, Copy, MessageSquare, Paperclip, Activity, Trash2 } fro
 import { supabase } from '../lib/supabase';
 import { WorkflowWithRelations } from '../types/database.types';
 import { ConfirmDialog } from '../components/workflow/ConfirmDialog';
+import { useAuth } from '../contexts/AuthContext';
 
 type TabType = 'overview' | 'technical' | 'implementation' | 'collaboration';
 
 export const WorkflowDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [workflow, setWorkflow] = useState<WorkflowWithRelations | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -59,6 +61,7 @@ export const WorkflowDetail: React.FC = () => {
           name: `${workflow.name} (Copy)`,
           subdomain_id: workflow.subdomain_id,
           summary: version.workflow_description,
+          created_by: user?.id,
         })
         .select()
         .single();
@@ -82,6 +85,7 @@ export const WorkflowDetail: React.FC = () => {
           ai_enabler_type: version.ai_enabler_type,
           operational_context: version.operational_context,
           expected_roi_levers: version.expected_roi_levers,
+          created_by: user?.id,
         })
         .select()
         .single();
