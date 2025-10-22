@@ -42,7 +42,7 @@ export const Analytics: React.FC = () => {
             name
           )
         ),
-        current_version:workflow_versions!workflows_current_version_id_fkey(
+        current_version:workflow_versions!fk_workflows_current_version(
           *
         )
       `)
