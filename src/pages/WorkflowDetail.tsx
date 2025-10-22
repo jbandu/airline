@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Copy, MessageSquare, Paperclip, Activity, Trash2 } from 'lucide-react';
+import { ArrowLeft, CreditCard as Edit, Copy, MessageSquare, Paperclip, Activity, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { WorkflowWithRelations } from '../types/database.types';
 import { ConfirmDialog } from '../components/workflow/ConfirmDialog';
