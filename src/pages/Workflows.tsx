@@ -13,6 +13,7 @@ export const Workflows: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({
     wave: 'all',
     status: [] as string[],
@@ -29,18 +30,31 @@ export const Workflows: React.FC = () => {
   }, [workflows, searchTerm, filters]);
 
   const loadWorkflows = async () => {
-    const { data } = await supabase
-      .from('workflows')
-      .select('*, domains(*), subdomains(*)')
-      .is('archived_at', null)
-      .order('created_at', { ascending: false });
-    if (data) {
-      const mappedData = data.map(workflow => ({
-        ...workflow,
-        domain: workflow.domains,
-        subdomain: workflow.subdomains
-      }));
-      setWorkflows(mappedData);
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('workflows')
+        .select('*, domains(*), subdomains(*)')
+        .is('archived_at', null)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error loading workflows:', error);
+        return;
+      }
+
+      if (data) {
+        const mappedData = data.map(workflow => ({
+          ...workflow,
+          domain: workflow.domains,
+          subdomain: workflow.subdomains
+        }));
+        setWorkflows(mappedData);
+      }
+    } catch (err) {
+      console.error('Unexpected error loading workflows:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -381,7 +395,15 @@ export const Workflows: React.FC = () => {
         </div>
       )}
 
-      {filteredWorkflows.length === 0 && (
+      {loading && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-12 text-center">
+          <div className="text-gray-400">
+            <p className="text-lg mb-2">Loading workflows...</p>
+          </div>
+        </div>
+      )}
+
+      {!loading && filteredWorkflows.length === 0 && (
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-12 text-center">
           <div className="text-gray-400">
             <p className="text-lg mb-2">No workflows found</p>
