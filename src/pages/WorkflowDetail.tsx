@@ -47,39 +47,55 @@ export const WorkflowDetail: React.FC = () => {
   };
 
   const handleClone = async () => {
-    if (!workflow) return;
+    if (!workflow || !workflow.current_version) return;
 
     setIsCloning(true);
     try {
-      const clonedData = {
-        name: `${workflow.name} (Copy)`,
-        description: workflow.description,
-        domain_id: workflow.domain_id,
-        subdomain_id: workflow.subdomain_id,
-        complexity: workflow.complexity,
-        agentic_potential: workflow.agentic_potential,
-        autonomy_level: workflow.autonomy_level,
-        implementation_wave: workflow.implementation_wave,
-        status: 'draft',
-        airline_type: workflow.airline_type,
-        agentic_function_type: workflow.agentic_function_type,
-        ai_enablers: workflow.ai_enablers,
-        systems_involved: workflow.systems_involved,
-        business_context: workflow.business_context,
-        expected_roi: workflow.expected_roi,
-        dependencies: workflow.dependencies,
-        parent_workflow_id: workflow.id,
-      };
+      const version = workflow.current_version;
 
-      const { data, error } = await supabase
+      const { data: newWorkflow, error: workflowError } = await supabase
         .from('workflows')
-        .insert(clonedData)
+        .insert({
+          name: `${workflow.name} (Copy)`,
+          subdomain_id: workflow.subdomain_id,
+          summary: version.workflow_description,
+        })
         .select()
         .single();
 
-      if (error) throw error;
+      if (workflowError) throw workflowError;
 
-      navigate(`/workflows/${data.id}`);
+      const { data: newVersion, error: versionError } = await supabase
+        .from('workflow_versions')
+        .insert({
+          workflow_id: newWorkflow.id,
+          status: 'draft',
+          domain: version.domain,
+          subdomain: version.subdomain,
+          workflow_name: `${workflow.name} (Copy)`,
+          workflow_description: version.workflow_description,
+          complexity: version.complexity,
+          agentic_potential: version.agentic_potential,
+          autonomy_level: version.autonomy_level,
+          implementation_wave: version.implementation_wave,
+          agentic_function_type: version.agentic_function_type,
+          ai_enabler_type: version.ai_enabler_type,
+          operational_context: version.operational_context,
+          expected_roi_levers: version.expected_roi_levers,
+        })
+        .select()
+        .single();
+
+      if (versionError) throw versionError;
+
+      const { error: updateError } = await supabase
+        .from('workflows')
+        .update({ current_version_id: newVersion.id })
+        .eq('id', newWorkflow.id);
+
+      if (updateError) throw updateError;
+
+      navigate(`/workflows/${newWorkflow.id}`);
     } catch (error) {
       console.error('Error cloning workflow:', error);
       alert('Failed to clone workflow. Please try again.');
