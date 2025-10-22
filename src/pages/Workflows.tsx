@@ -34,7 +34,20 @@ export const Workflows: React.FC = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('workflows')
-        .select('*')
+        .select(`
+          *,
+          subdomain:subdomains(
+            id,
+            name,
+            domain:domains(
+              id,
+              name
+            )
+          ),
+          current_version:workflow_versions!workflows_current_version_id_fkey(
+            *
+          )
+        `)
         .is('archived_at', null)
         .order('created_at', { ascending: false });
 
@@ -44,7 +57,7 @@ export const Workflows: React.FC = () => {
       }
 
       if (data) {
-        setWorkflows(data as WorkflowWithRelations[]);
+        setWorkflows(data as any);
       }
     } catch (err) {
       console.error('Unexpected error loading workflows:', err);
@@ -59,20 +72,23 @@ export const Workflows: React.FC = () => {
     if (searchTerm) {
       filtered = filtered.filter(w =>
         w.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        w.description.toLowerCase().includes(searchTerm.toLowerCase())
+        (w.summary && w.summary.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
     if (filters.wave !== 'all') {
-      filtered = filtered.filter(w => w.implementation_wave === parseInt(filters.wave));
+      filtered = filtered.filter(w => w.current_version?.implementation_wave === parseInt(filters.wave));
     }
 
     if (filters.status.length > 0) {
-      filtered = filtered.filter(w => filters.status.includes(w.status));
+      filtered = filtered.filter(w => w.current_version && filters.status.includes(w.current_version.status));
     }
 
     filtered = filtered.filter(
-      w => w.complexity >= filters.complexityMin && w.complexity <= filters.complexityMax
+      w => {
+        const complexity = w.current_version?.complexity || 3;
+        return complexity >= filters.complexityMin && complexity <= filters.complexityMax;
+      }
     );
 
     setFilteredWorkflows(filtered);
@@ -248,29 +264,36 @@ export const Workflows: React.FC = () => {
                 <h3 className="font-bold text-lg text-gray-900 dark:text-white line-clamp-2">
                   {workflow.name}
                 </h3>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(workflow.status)}`}>
-                  {workflow.status}
+                <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(workflow.current_version?.status || 'draft')}`}>
+                  {workflow.current_version?.status || 'draft'}
                 </span>
               </div>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
-                {workflow.description}
+                {workflow.summary || workflow.current_version?.workflow_description || ''}
               </p>
               <div className="flex items-center gap-2 mb-4">
-                <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded">
-                  Wave {workflow.implementation_wave}
-                </span>
+                {workflow.subdomain?.domain && (
+                  <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
+                    {workflow.subdomain.domain.name}
+                  </span>
+                )}
+                {workflow.current_version?.implementation_wave && (
+                  <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded">
+                    Wave {workflow.current_version.implementation_wave}
+                  </span>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="text-gray-600 dark:text-gray-400">Complexity:</span>
-                  <span className={`ml-2 px-2 py-0.5 text-xs font-medium rounded ${getComplexityColor(workflow.complexity)}`}>
-                    {workflow.complexity}/5
+                  <span className={`ml-2 px-2 py-0.5 text-xs font-medium rounded ${getComplexityColor(workflow.current_version?.complexity || 3)}`}>
+                    {workflow.current_version?.complexity || '-'}/5
                   </span>
                 </div>
                 <div>
                   <span className="text-gray-600 dark:text-gray-400">Potential:</span>
                   <span className="ml-2 font-medium text-gray-900 dark:text-white">
-                    {workflow.agentic_potential}/5
+                    {workflow.current_version?.agentic_potential || '-'}/5
                   </span>
                 </div>
               </div>
@@ -338,22 +361,22 @@ export const Workflows: React.FC = () => {
                     {workflow.name}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                    -
+                    {workflow.subdomain?.domain?.name || '-'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                    Wave {workflow.implementation_wave}
+                    Wave {workflow.current_version?.implementation_wave || '-'}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${getComplexityColor(workflow.complexity)}`}>
-                      {workflow.complexity}/5
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${getComplexityColor(workflow.current_version?.complexity || 3)}`}>
+                      {workflow.current_version?.complexity || '-'}/5
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {workflow.agentic_potential}/5
+                    {workflow.current_version?.agentic_potential || '-'}/5
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(workflow.status)}`}>
-                      {workflow.status}
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(workflow.current_version?.status || 'draft')}`}>
+                      {workflow.current_version?.status || 'draft'}
                     </span>
                   </td>
                   <td className="px-6 py-4">

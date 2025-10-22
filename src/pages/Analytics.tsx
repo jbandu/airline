@@ -32,7 +32,20 @@ export const Analytics: React.FC = () => {
   const loadAnalyticsData = async () => {
     const { data } = await supabase
       .from('workflows')
-      .select('*')
+      .select(`
+        *,
+        subdomain:subdomains(
+          id,
+          name,
+          domain:domains(
+            id,
+            name
+          )
+        ),
+        current_version:workflow_versions!workflows_current_version_id_fkey(
+          *
+        )
+      `)
       .is('archived_at', null);
 
     if (data) {
@@ -41,47 +54,55 @@ export const Analytics: React.FC = () => {
       const scatter = data.map((w) => ({
         id: w.id,
         name: w.name,
-        complexity: w.complexity,
-        potential: w.agentic_potential,
-        wave: w.implementation_wave,
+        complexity: w.current_version?.complexity || 3,
+        potential: w.current_version?.agentic_potential || 3,
+        wave: w.current_version?.implementation_wave || 1,
       }));
       setScatterData(scatter);
 
-      setDomainData([]);
+      const domainCounts: Record<string, number> = {};
+      data.forEach((w) => {
+        const domainName = w.subdomain?.domain?.name || 'Uncategorized';
+        domainCounts[domainName] = (domainCounts[domainName] || 0) + 1;
+      });
+      const domainChartData = Object.entries(domainCounts).map(([name, count]) => ({
+        name,
+        count,
+      }));
+      setDomainData(domainChartData);
 
       const waveCounts = [
-        { name: 'Wave 1', value: data.filter((w) => w.implementation_wave === 1).length },
-        { name: 'Wave 2', value: data.filter((w) => w.implementation_wave === 2).length },
-        { name: 'Wave 3', value: data.filter((w) => w.implementation_wave === 3).length },
+        { name: 'Wave 1', value: data.filter((w) => w.current_version?.implementation_wave === 1).length },
+        { name: 'Wave 2', value: data.filter((w) => w.current_version?.implementation_wave === 2).length },
+        { name: 'Wave 3', value: data.filter((w) => w.current_version?.implementation_wave === 3).length },
       ];
       setWaveData(waveCounts);
 
       const top = data
-        .sort((a, b) => b.agentic_potential - a.agentic_potential)
+        .sort((a, b) => (b.current_version?.agentic_potential || 0) - (a.current_version?.agentic_potential || 0))
         .slice(0, 10)
         .map((w) => ({
           name: w.name,
-          potential: w.agentic_potential,
-          complexity: w.complexity,
-          wave: w.implementation_wave,
+          potential: w.current_version?.agentic_potential || 0,
+          complexity: w.current_version?.complexity || 0,
+          wave: w.current_version?.implementation_wave || 0,
         }));
       setTopWorkflows(top);
 
       const autonomyCounts = [
-        { level: 'Level 1', count: data.filter((w) => w.autonomy_level === 1).length },
-        { level: 'Level 2', count: data.filter((w) => w.autonomy_level === 2).length },
-        { level: 'Level 3', count: data.filter((w) => w.autonomy_level === 3).length },
-        { level: 'Level 4', count: data.filter((w) => w.autonomy_level === 4).length },
-        { level: 'Level 5', count: data.filter((w) => w.autonomy_level === 5).length },
+        { level: 'Level 1', count: data.filter((w) => w.current_version?.autonomy_level === 1).length },
+        { level: 'Level 2', count: data.filter((w) => w.current_version?.autonomy_level === 2).length },
+        { level: 'Level 3', count: data.filter((w) => w.current_version?.autonomy_level === 3).length },
+        { level: 'Level 4', count: data.filter((w) => w.current_version?.autonomy_level === 4).length },
+        { level: 'Level 5', count: data.filter((w) => w.current_version?.autonomy_level === 5).length },
       ];
       setAutonomyData(autonomyCounts);
 
       const aiEnablersMap: Record<string, number> = {};
       data.forEach((w) => {
-        if (w.ai_enablers && Array.isArray(w.ai_enablers)) {
-          w.ai_enablers.forEach((enabler: string) => {
-            aiEnablersMap[enabler] = (aiEnablersMap[enabler] || 0) + 1;
-          });
+        const aiEnabler = w.current_version?.ai_enabler_type;
+        if (aiEnabler) {
+          aiEnablersMap[aiEnabler] = (aiEnablersMap[aiEnabler] || 0) + 1;
         }
       });
       const aiEnablers = Object.entries(aiEnablersMap)
@@ -91,9 +112,9 @@ export const Analytics: React.FC = () => {
       setAiEnablersData(aiEnablers);
 
       const timeline = [
-        { wave: 'Wave 1', workflows: data.filter((w) => w.implementation_wave === 1).length, avgComplexity: data.filter((w) => w.implementation_wave === 1).reduce((acc, w) => acc + w.complexity, 0) / (data.filter((w) => w.implementation_wave === 1).length || 1) },
-        { wave: 'Wave 2', workflows: data.filter((w) => w.implementation_wave === 2).length, avgComplexity: data.filter((w) => w.implementation_wave === 2).reduce((acc, w) => acc + w.complexity, 0) / (data.filter((w) => w.implementation_wave === 2).length || 1) },
-        { wave: 'Wave 3', workflows: data.filter((w) => w.implementation_wave === 3).length, avgComplexity: data.filter((w) => w.implementation_wave === 3).reduce((acc, w) => acc + w.complexity, 0) / (data.filter((w) => w.implementation_wave === 3).length || 1) },
+        { wave: 'Wave 1', workflows: data.filter((w) => w.current_version?.implementation_wave === 1).length, avgComplexity: data.filter((w) => w.current_version?.implementation_wave === 1).reduce((acc, w) => acc + (w.current_version?.complexity || 0), 0) / (data.filter((w) => w.current_version?.implementation_wave === 1).length || 1) },
+        { wave: 'Wave 2', workflows: data.filter((w) => w.current_version?.implementation_wave === 2).length, avgComplexity: data.filter((w) => w.current_version?.implementation_wave === 2).reduce((acc, w) => acc + (w.current_version?.complexity || 0), 0) / (data.filter((w) => w.current_version?.implementation_wave === 2).length || 1) },
+        { wave: 'Wave 3', workflows: data.filter((w) => w.current_version?.implementation_wave === 3).length, avgComplexity: data.filter((w) => w.current_version?.implementation_wave === 3).reduce((acc, w) => acc + (w.current_version?.complexity || 0), 0) / (data.filter((w) => w.current_version?.implementation_wave === 3).length || 1) },
       ];
       setTimelineData(timeline);
     }
@@ -235,7 +256,7 @@ export const Analytics: React.FC = () => {
           </div>
           <div className="text-4xl font-bold text-gray-900 dark:text-white">
             {workflows.length > 0
-              ? (workflows.reduce((acc, w) => acc + w.agentic_potential, 0) / workflows.length).toFixed(1)
+              ? (workflows.reduce((acc, w) => acc + (w.current_version?.agentic_potential || 0), 0) / workflows.length).toFixed(1)
               : '0'}
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Out of 5.0</p>
@@ -248,7 +269,7 @@ export const Analytics: React.FC = () => {
           </div>
           <div className="text-4xl font-bold text-gray-900 dark:text-white">
             {workflows.length > 0
-              ? (workflows.reduce((acc, w) => acc + w.complexity, 0) / workflows.length).toFixed(1)
+              ? (workflows.reduce((acc, w) => acc + (w.current_version?.complexity || 0), 0) / workflows.length).toFixed(1)
               : '0'}
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Out of 5.0</p>

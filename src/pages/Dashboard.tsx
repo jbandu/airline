@@ -25,14 +25,27 @@ export const Dashboard: React.FC = () => {
   const loadDashboardData = async () => {
     const { data: workflows } = await supabase
       .from('workflows')
-      .select('*')
+      .select(`
+        *,
+        subdomain:subdomains(
+          id,
+          name,
+          domain:domains(
+            id,
+            name
+          )
+        ),
+        current_version:workflow_versions!workflows_current_version_id_fkey(
+          *
+        )
+      `)
       .is('archived_at', null);
 
     if (workflows) {
       const total = workflows.length;
-      const quickWins = workflows.filter(w => w.complexity <= 2 && w.agentic_potential >= 4).length;
-      const avgPot = workflows.reduce((acc, w) => acc + (w.agentic_potential || 0), 0) / total || 0;
-      const completed = workflows.filter(w => w.status === 'completed').length;
+      const quickWins = workflows.filter(w => w.current_version && w.current_version.complexity <= 2 && w.current_version.agentic_potential >= 4).length;
+      const avgPot = workflows.reduce((acc, w) => acc + (w.current_version?.agentic_potential || 0), 0) / total || 0;
+      const completed = workflows.filter(w => w.current_version?.status === 'completed').length;
       const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
       setMetrics({
@@ -42,12 +55,20 @@ export const Dashboard: React.FC = () => {
         implementationProgress: progress,
       });
 
-      setDomainData([]);
+      const domainCounts: Record<string, number> = {};
+      workflows.forEach(w => {
+        const domainName = w.subdomain?.domain?.name || 'Uncategorized';
+        domainCounts[domainName] = (domainCounts[domainName] || 0) + 1;
+      });
+      const domainChartData = Object.entries(domainCounts)
+        .slice(0, 6)
+        .map(([name, count]) => ({ name, count }));
+      setDomainData(domainChartData);
 
       const waveCounts = [
-        { name: 'Wave 1', value: workflows.filter(w => w.implementation_wave === 1).length },
-        { name: 'Wave 2', value: workflows.filter(w => w.implementation_wave === 2).length },
-        { name: 'Wave 3', value: workflows.filter(w => w.implementation_wave === 3).length },
+        { name: 'Wave 1', value: workflows.filter(w => w.current_version?.implementation_wave === 1).length },
+        { name: 'Wave 2', value: workflows.filter(w => w.current_version?.implementation_wave === 2).length },
+        { name: 'Wave 3', value: workflows.filter(w => w.current_version?.implementation_wave === 3).length },
       ];
       setWaveData(waveCounts);
     }
