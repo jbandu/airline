@@ -1,63 +1,106 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronRight, ChevronDown, Folder, FolderOpen, Plus, Search } from 'lucide-react';
+import { Folder, Plus, Search, TrendingUp, Layers, Activity } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Domain, Subdomain } from '../types/database.types';
 
+interface DomainWithStats extends Domain {
+  subdomainCount: number;
+  workflowCount: number;
+}
+
 export const Domains: React.FC = () => {
-  const [domains, setDomains] = useState<Domain[]>([]);
+  const [domains, setDomains] = useState<DomainWithStats[]>([]);
   const [subdomains, setSubdomains] = useState<Subdomain[]>([]);
-  const [expandedDomains, setExpandedDomains] = useState<Set<string>>(new Set());
-  const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null);
-  const [selectedSubdomain, setSelectedSubdomain] = useState<Subdomain | null>(null);
+  const [selectedDomain, setSelectedDomain] = useState<DomainWithStats | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadDomains();
-    loadSubdomains();
+    loadData();
   }, []);
 
-  const loadDomains = async () => {
-    const { data } = await supabase
-      .from('domains')
-      .select('*')
-      .order('name');
-    if (data) setDomains(data);
-  };
+  const loadData = async () => {
+    try {
+      setLoading(true);
 
-  const loadSubdomains = async () => {
-    const { data } = await supabase
-      .from('subdomains')
-      .select('*')
-      .order('name');
-    if (data) setSubdomains(data);
-  };
+      const [domainsResult, subdomainsResult] = await Promise.all([
+        supabase.from('domains').select('*').order('name'),
+        supabase.from('subdomains').select('*').order('name'),
+      ]);
 
-  const toggleDomain = (domainId: string) => {
-    const newExpanded = new Set(expandedDomains);
-    if (newExpanded.has(domainId)) {
-      newExpanded.delete(domainId);
-    } else {
-      newExpanded.add(domainId);
+      if (domainsResult.data && subdomainsResult.data) {
+        setSubdomains(subdomainsResult.data);
+
+        const domainsWithStats: DomainWithStats[] = await Promise.all(
+          domainsResult.data.map(async (domain) => {
+            const subdomainCount = subdomainsResult.data.filter(
+              (sd) => sd.domain_id === domain.id
+            ).length;
+
+            const { count: workflowCount } = await supabase
+              .from('workflows')
+              .select('*', { count: 'exact', head: true })
+              .eq('subdomain_id', domain.id)
+              .is('archived_at', null);
+
+            return {
+              ...domain,
+              subdomainCount,
+              workflowCount: workflowCount || 0,
+            };
+          })
+        );
+
+        setDomains(domainsWithStats);
+      }
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
     }
-    setExpandedDomains(newExpanded);
   };
 
   const getSubdomainsForDomain = (domainId: string) => {
-    return subdomains.filter(sd => sd.domain_id === domainId);
+    return subdomains.filter((sd) => sd.domain_id === domainId);
   };
 
-  const filteredDomains = domains.filter(d =>
-    d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    d.description.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredDomains = domains.filter(
+    (d) =>
+      d.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const stats = {
+    totalDomains: domains.length,
+    totalSubdomains: subdomains.length,
+    totalWorkflows: domains.reduce((sum, d) => sum + d.workflowCount, 0),
+    avgSubdomainsPerDomain: domains.length > 0 ? Math.round((subdomains.length / domains.length) * 10) / 10 : 0,
+  };
+
+  const domainColors = [
+    'from-blue-500 to-blue-600',
+    'from-green-500 to-green-600',
+    'from-amber-500 to-amber-600',
+    'from-red-500 to-red-600',
+    'from-purple-500 to-purple-600',
+    'from-pink-500 to-pink-600',
+    'from-cyan-500 to-cyan-600',
+    'from-teal-500 to-teal-600',
+    'from-orange-500 to-orange-600',
+    'from-lime-500 to-lime-600',
+  ];
+
+  const getDomainColor = (index: number) => {
+    return domainColors[index % domainColors.length];
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Domains & Subdomains</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Business Domains</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Organize workflows by domain and subdomain
+            {domains.length} core business domains with {subdomains.length} subdomains
           </p>
         </div>
         <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
@@ -66,154 +109,195 @@ export const Domains: React.FC = () => {
         </button>
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+              <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Domains</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalDomains}</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+              <Folder className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Subdomains</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalSubdomains}</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
+              <Activity className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Workflows</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalWorkflows}</div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Avg Subdomains</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.avgSubdomainsPerDomain}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
           type="text"
-          placeholder="Search domains and subdomains..."
+          placeholder="Search domains..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6 h-[calc(100vh-300px)] overflow-y-auto">
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Domain Tree</h2>
-          <div className="space-y-1">
-            {filteredDomains.map((domain) => {
-              const isExpanded = expandedDomains.has(domain.id);
-              const domainSubdomains = getSubdomainsForDomain(domain.id);
-              return (
-                <div key={domain.id}>
-                  <button
-                    onClick={() => {
-                      toggleDomain(domain.id);
-                      setSelectedDomain(domain);
-                      setSelectedSubdomain(null);
-                    }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-left ${
-                      selectedDomain?.id === domain.id && !selectedSubdomain
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    {domainSubdomains.length > 0 && (
-                      isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />
-                    )}
-                    {domainSubdomains.length === 0 && <div className="w-4" />}
-                    {isExpanded ? <FolderOpen className="w-4 h-4" /> : <Folder className="w-4 h-4" />}
-                    <span className="font-medium truncate">{domain.name}</span>
-                    <span className="ml-auto text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
-                      {domainSubdomains.length}
-                    </span>
-                  </button>
-                  {isExpanded && (
-                    <div className="ml-6 mt-1 space-y-1">
-                      {domainSubdomains.map((subdomain) => (
-                        <button
-                          key={subdomain.id}
-                          onClick={() => {
-                            setSelectedDomain(domain);
-                            setSelectedSubdomain(subdomain);
-                          }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors text-left ${
-                            selectedSubdomain?.id === subdomain.id
-                              ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                          }`}
-                        >
-                          <Folder className="w-4 h-4" />
-                          <span className="text-sm truncate">{subdomain.name}</span>
-                        </button>
-                      ))}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p className="text-gray-600 dark:text-gray-400">Loading domains...</p>
+          </div>
+        </div>
+      ) : filteredDomains.length === 0 ? (
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-12 text-center">
+          <div className="max-w-md mx-auto">
+            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Folder className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No domains found</h3>
+            <p className="text-gray-600 dark:text-gray-400">Try adjusting your search term</p>
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredDomains.map((domain, index) => {
+            const domainSubdomains = getSubdomainsForDomain(domain.id);
+            return (
+              <div
+                key={domain.id}
+                className="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                onClick={() => setSelectedDomain(domain)}
+              >
+                <div className={`h-2 bg-gradient-to-r ${getDomainColor(index)}`} />
+
+                <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`w-12 h-12 bg-gradient-to-br ${getDomainColor(index)} rounded-xl flex items-center justify-center shadow-lg`}>
+                      <Folder className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+
+                  <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors min-h-[3.5rem]">
+                    {domain.name}
+                  </h3>
+
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 min-h-[2.5rem]">
+                    {domain.description || 'No description'}
+                  </p>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Subdomains</span>
+                      <span className="text-lg font-bold text-gray-900 dark:text-white">{domain.subdomainCount}</span>
+                    </div>
+                    <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">Workflows</span>
+                      <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{domain.workflowCount}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {selectedDomain && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setSelectedDomain(null)}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedDomain.name}</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Domain Details</p>
+              </div>
+              <button
+                onClick={() => setSelectedDomain(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <span className="text-2xl text-gray-500">&times;</span>
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Description</label>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {selectedDomain.description || 'No description available'}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Subdomains</div>
+                  <div className="text-2xl font-bold text-gray-900 dark:text-white">{selectedDomain.subdomainCount}</div>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Workflows</div>
+                  <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{selectedDomain.workflowCount}</div>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Created</div>
+                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                    {new Date(selectedDomain.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-3">Subdomains ({getSubdomainsForDomain(selectedDomain.id).length})</label>
+                <div className="space-y-2">
+                  {getSubdomainsForDomain(selectedDomain.id).length > 0 ? (
+                    getSubdomainsForDomain(selectedDomain.id).map((subdomain) => (
+                      <div key={subdomain.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <Folder className="w-5 h-5 text-gray-400" />
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900 dark:text-white">{subdomain.name}</div>
+                            {subdomain.description && (
+                              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{subdomain.description}</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-400">
+                      <Folder className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                      <p>No subdomains yet</p>
                     </div>
                   )}
                 </div>
-              );
-            })}
-            {filteredDomains.length === 0 && (
-              <div className="text-center py-8 text-gray-400">
-                <Folder className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                <p>No domains found</p>
               </div>
-            )}
+            </div>
           </div>
         </div>
-
-        <div className="lg:col-span-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-          {selectedSubdomain ? (
-            <div>
-              <div className="mb-6">
-                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
-                  {selectedDomain?.name} / Subdomain
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {selectedSubdomain.name}
-                </h2>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                  <p className="mt-1 text-gray-600 dark:text-gray-400">
-                    {selectedSubdomain.description || 'No description available'}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Created</label>
-                    <p className="mt-1 text-gray-600 dark:text-gray-400">
-                      {new Date(selectedSubdomain.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Updated</label>
-                    <p className="mt-1 text-gray-600 dark:text-gray-400">
-                      {new Date(selectedSubdomain.updated_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : selectedDomain ? (
-            <div>
-              <div className="mb-6">
-                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Domain</div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {selectedDomain.name}
-                </h2>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                  <p className="mt-1 text-gray-600 dark:text-gray-400">
-                    {selectedDomain.description || 'No description available'}
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Subdomains</label>
-                    <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-white">
-                      {getSubdomainsForDomain(selectedDomain.id).length}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Created</label>
-                    <p className="mt-1 text-gray-600 dark:text-gray-400">
-                      {new Date(selectedDomain.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-gray-400">
-              <Folder className="w-16 h-16 mb-4 opacity-30" />
-              <p className="text-lg">Select a domain or subdomain to view details</p>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
     </div>
   );
 };
