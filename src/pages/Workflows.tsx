@@ -34,7 +34,7 @@ export const Workflows: React.FC = () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('workflows')
-        .select('*, domains(*), subdomains(*)')
+        .select('*')
         .is('archived_at', null)
         .order('created_at', { ascending: false });
 
@@ -44,12 +44,7 @@ export const Workflows: React.FC = () => {
       }
 
       if (data) {
-        const mappedData = data.map(workflow => ({
-          ...workflow,
-          domain: workflow.domains,
-          subdomain: workflow.subdomains
-        }));
-        setWorkflows(mappedData);
+        setWorkflows(data as WorkflowWithRelations[]);
       }
     } catch (err) {
       console.error('Unexpected error loading workflows:', err);
@@ -261,11 +256,6 @@ export const Workflows: React.FC = () => {
                 {workflow.description}
               </p>
               <div className="flex items-center gap-2 mb-4">
-                {workflow.domain && (
-                  <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded">
-                    {workflow.domain.name}
-                  </span>
-                )}
                 <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded">
                   Wave {workflow.implementation_wave}
                 </span>
@@ -348,7 +338,7 @@ export const Workflows: React.FC = () => {
                     {workflow.name}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                    {workflow.domain?.name || '-'}
+                    -
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
                     Wave {workflow.implementation_wave}
