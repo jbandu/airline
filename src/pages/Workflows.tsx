@@ -31,10 +31,17 @@ export const Workflows: React.FC = () => {
   const loadWorkflows = async () => {
     const { data } = await supabase
       .from('workflows')
-      .select('*, domain:domains(*), subdomain:subdomains(*)')
+      .select('*, domains(*), subdomains(*)')
       .is('archived_at', null)
       .order('created_at', { ascending: false });
-    if (data) setWorkflows(data);
+    if (data) {
+      const mappedData = data.map(workflow => ({
+        ...workflow,
+        domain: workflow.domains,
+        subdomain: workflow.subdomains
+      }));
+      setWorkflows(mappedData);
+    }
   };
 
   const applyFilters = () => {
