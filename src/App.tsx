@@ -12,6 +12,7 @@ import { WorkflowEdit } from './pages/WorkflowEdit';
 import { WorkflowDetail } from './pages/WorkflowDetail';
 import { Analytics } from './pages/Analytics';
 import { AgentNetwork } from './pages/AgentNetwork';
+import { AgentPerformance } from './pages/AgentPerformance';
 import { OntologyTree } from './pages/OntologyTree';
 import { CrossDomainBridges } from './pages/CrossDomainBridges';
 import { Stakeholders } from './pages/Stakeholders';
@@ -100,6 +101,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <AgentNetwork />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/performance"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <AgentPerformance />
                   </Layout>
                 </ProtectedRoute>
               }
