@@ -13,6 +13,7 @@ import { WorkflowDetail } from './pages/WorkflowDetail';
 import { Analytics } from './pages/Analytics';
 import { AgentNetwork } from './pages/AgentNetwork';
 import { OntologyTree } from './pages/OntologyTree';
+import { CrossDomainBridges } from './pages/CrossDomainBridges';
 import { Stakeholders } from './pages/Stakeholders';
 import { Settings } from './pages/Settings';
 
@@ -109,6 +110,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <OntologyTree />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bridges"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CrossDomainBridges />
                   </Layout>
                 </ProtectedRoute>
               }

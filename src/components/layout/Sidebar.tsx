@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Folder, FileText, BarChart3, Bot, Network, Users, Settings, ChevronLeft, ChevronRight, Plane } from 'lucide-react';
+import { Home, Folder, FileText, BarChart3, Bot, Network, GitBranch, Users, Settings, ChevronLeft, ChevronRight, Plane } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -15,6 +15,7 @@ const menuItems = [
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
   { icon: Bot, label: 'Agents', path: '/agents' },
   { icon: Network, label: 'Ontology', path: '/ontology' },
+  { icon: GitBranch, label: 'Bridges', path: '/bridges' },
   { icon: Users, label: 'Stakeholders', path: '/stakeholders' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
