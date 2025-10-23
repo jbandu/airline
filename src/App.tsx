@@ -11,6 +11,7 @@ import { WorkflowCreate } from './pages/WorkflowCreate';
 import { WorkflowEdit } from './pages/WorkflowEdit';
 import { WorkflowDetail } from './pages/WorkflowDetail';
 import { Analytics } from './pages/Analytics';
+import { AgentNetwork } from './pages/AgentNetwork';
 import { Stakeholders } from './pages/Stakeholders';
 import { Settings } from './pages/Settings';
 
@@ -87,6 +88,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Analytics />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agents"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <AgentNetwork />
                   </Layout>
                 </ProtectedRoute>
               }
