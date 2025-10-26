@@ -22,3 +22,13 @@ dist-ssr
 *.sw?
 .env
 .vercel
+
+# VitePress
+.vitepress/
+docs/.vitepress/cache/
+
+# Supabase CLI temp
+supabase/.temp/
+
+# Build output
+dist/
