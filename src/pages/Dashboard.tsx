@@ -5,6 +5,8 @@ import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, X
 import { MetricCard } from '../components/dashboard/MetricCard';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { logDatabaseError } from '../lib/errorLogger';
+import { validateWorkflowsWithRelations } from '../lib/dataValidator';
 
 interface WorkflowActivity {
   id: number;
@@ -38,31 +40,42 @@ export const Dashboard: React.FC = () => {
   }, []);
 
   const loadDashboardData = async () => {
-    const { data: workflows } = await supabase
-      .from('workflows')
-      .select(`
-        *,
-        subdomain:subdomains(
-          id,
-          name,
-          domain:domains(
+    try {
+      const { data: workflows, error } = await supabase
+        .from('workflows')
+        .select(`
+          *,
+          subdomain:subdomains(
             id,
-            name
+            name,
+            domain:domains(
+              id,
+              name
+            )
           )
-        ),
-        current_version:workflow_versions!fk_workflows_current_version(
-          *
-        )
-      `)
-      .is('archived_at', null);
+        `)
+        .is('archived_at', null);
 
-    if (workflows) {
+      if (error) {
+        logDatabaseError('Failed to load dashboard data', error, {
+          table: 'workflows',
+          operation: 'select',
+          query: 'loadDashboardData',
+        });
+        return;
+      }
+
+      if (!workflows || !validateWorkflowsWithRelations(workflows, 'loadDashboardData')) {
+        return;
+      }
+
+      if (workflows) {
       const total = workflows.length;
-      const quickWins = workflows.filter(w => w.current_version && w.current_version.complexity <= 2 && w.current_version.agentic_potential >= 4).length;
-      const avgPot = workflows.reduce((acc, w) => acc + (w.current_version?.agentic_potential || 0), 0) / total || 0;
-      const approved = workflows.filter(w => w.current_version?.status === 'approved').length;
-      const inProgress = workflows.filter(w => w.current_version?.status === 'in_progress').length;
-      const draft = workflows.filter(w => w.current_version?.status === 'draft').length;
+      const quickWins = workflows.filter(w => w.complexity <= 2 && w.agentic_potential >= 4).length;
+      const avgPot = workflows.reduce((acc, w) => acc + (w.agentic_potential || 0), 0) / total || 0;
+      const approved = workflows.filter(w => w.status === 'approved').length;
+      const inProgress = workflows.filter(w => w.status === 'in_progress').length;
+      const draft = workflows.filter(w => w.status === 'draft').length;
       const progress = total > 0 ? Math.round((approved / total) * 100) : 0;
 
       setMetrics({
@@ -87,9 +100,9 @@ export const Dashboard: React.FC = () => {
       setDomainData(domainChartData);
 
       const waveCounts = [
-        { name: 'Wave 1', value: workflows.filter(w => w.current_version?.implementation_wave === 1).length, color: '#3B82F6' },
-        { name: 'Wave 2', value: workflows.filter(w => w.current_version?.implementation_wave === 2).length, color: '#10B981' },
-        { name: 'Wave 3', value: workflows.filter(w => w.current_version?.implementation_wave === 3).length, color: '#F59E0B' },
+        { name: 'Wave 1', value: workflows.filter(w => w.implementation_wave === 1).length, color: '#3B82F6' },
+        { name: 'Wave 2', value: workflows.filter(w => w.implementation_wave === 2).length, color: '#10B981' },
+        { name: 'Wave 3', value: workflows.filter(w => w.implementation_wave === 3).length, color: '#F59E0B' },
       ];
       setWaveData(waveCounts);
 
@@ -103,30 +116,30 @@ export const Dashboard: React.FC = () => {
       const potentialByWave = [
         {
           wave: 'Wave 1',
-          avgPotential: workflows.filter(w => w.current_version?.implementation_wave === 1)
-            .reduce((sum, w) => sum + (w.current_version?.agentic_potential || 0), 0) /
-            workflows.filter(w => w.current_version?.implementation_wave === 1).length || 0,
-          avgComplexity: workflows.filter(w => w.current_version?.implementation_wave === 1)
-            .reduce((sum, w) => sum + (w.current_version?.complexity || 0), 0) /
-            workflows.filter(w => w.current_version?.implementation_wave === 1).length || 0,
+          avgPotential: workflows.filter(w => w.implementation_wave === 1)
+            .reduce((sum, w) => sum + (w.agentic_potential || 0), 0) /
+            workflows.filter(w => w.implementation_wave === 1).length || 0,
+          avgComplexity: workflows.filter(w => w.implementation_wave === 1)
+            .reduce((sum, w) => sum + (w.complexity || 0), 0) /
+            workflows.filter(w => w.implementation_wave === 1).length || 0,
         },
         {
           wave: 'Wave 2',
-          avgPotential: workflows.filter(w => w.current_version?.implementation_wave === 2)
-            .reduce((sum, w) => sum + (w.current_version?.agentic_potential || 0), 0) /
-            workflows.filter(w => w.current_version?.implementation_wave === 2).length || 0,
-          avgComplexity: workflows.filter(w => w.current_version?.implementation_wave === 2)
-            .reduce((sum, w) => sum + (w.current_version?.complexity || 0), 0) /
-            workflows.filter(w => w.current_version?.implementation_wave === 2).length || 0,
+          avgPotential: workflows.filter(w => w.implementation_wave === 2)
+            .reduce((sum, w) => sum + (w.agentic_potential || 0), 0) /
+            workflows.filter(w => w.implementation_wave === 2).length || 0,
+          avgComplexity: workflows.filter(w => w.implementation_wave === 2)
+            .reduce((sum, w) => sum + (w.complexity || 0), 0) /
+            workflows.filter(w => w.implementation_wave === 2).length || 0,
         },
         {
           wave: 'Wave 3',
-          avgPotential: workflows.filter(w => w.current_version?.implementation_wave === 3)
-            .reduce((sum, w) => sum + (w.current_version?.agentic_potential || 0), 0) /
-            workflows.filter(w => w.current_version?.implementation_wave === 3).length || 0,
-          avgComplexity: workflows.filter(w => w.current_version?.implementation_wave === 3)
-            .reduce((sum, w) => sum + (w.current_version?.complexity || 0), 0) /
-            workflows.filter(w => w.current_version?.implementation_wave === 3).length || 0,
+          avgPotential: workflows.filter(w => w.implementation_wave === 3)
+            .reduce((sum, w) => sum + (w.agentic_potential || 0), 0) /
+            workflows.filter(w => w.implementation_wave === 3).length || 0,
+          avgComplexity: workflows.filter(w => w.implementation_wave === 3)
+            .reduce((sum, w) => sum + (w.complexity || 0), 0) /
+            workflows.filter(w => w.implementation_wave === 3).length || 0,
         },
       ];
       setPotentialTrend(potentialByWave);
@@ -136,14 +149,20 @@ export const Dashboard: React.FC = () => {
         .map(w => ({
           id: w.id,
           name: w.name,
-          status: w.current_version?.status || 'draft',
+          status: w.status || 'draft',
           domain: w.subdomain?.domain?.name || 'Uncategorized',
-          updated_at: w.current_version?.created_at || w.created_at,
+          updated_at: w.updated_at || w.created_at,
           action: 'Updated'
         }))
         .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
 
       setRecentActivity(activities);
+    }
+    } catch (error) {
+      logDatabaseError('Unexpected error loading dashboard data', error, {
+        table: 'workflows',
+        operation: 'select',
+      });
     }
   };
 

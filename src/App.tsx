@@ -18,6 +18,7 @@ import { OntologyTree } from './pages/OntologyTree';
 import { CrossDomainBridges } from './pages/CrossDomainBridges';
 import { Stakeholders } from './pages/Stakeholders';
 import { Settings } from './pages/Settings';
+import { DebugDashboard } from './pages/DebugDashboard';
 
 function App() {
   return (
@@ -162,6 +163,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Settings />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/debug"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DebugDashboard />
                   </Layout>
                 </ProtectedRoute>
               }
