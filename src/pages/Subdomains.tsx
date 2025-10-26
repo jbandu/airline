@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Domain, Subdomain } from '../types/database.types';
+import { Domain, Subdomain, User } from '../types/database.types';
 import {
   Grid,
   List,
@@ -11,13 +11,16 @@ import {
   Search,
   ChevronDown,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  User as UserIcon
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 interface SubdomainWithDetails extends Subdomain {
   domain?: Domain;
   workflowCount: number;
+  creator_name?: string;
+  creator_email?: string;
 }
 
 type ViewMode = 'grid' | 'list' | 'table' | 'timeline';
@@ -29,7 +32,7 @@ export const Subdomains: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const [sortMode, setSortMode] = useState<SortMode>('name');
+  const [sortMode, setSortMode] = useState<SortMode>('recent');
   const [selectedDomain, setSelectedDomain] = useState<string>('all');
   const [domains, setDomains] = useState<Domain[]>([]);
 
@@ -66,7 +69,7 @@ export const Subdomains: React.FC = () => {
       // Load domains and subdomains
       const [domainsResult, subdomainsResult, workflowsResult] = await Promise.all([
         supabase.from('domains').select('*').order('name'),
-        supabase.from('subdomains').select('*').order('name'),
+        supabase.from('subdomains').select('*').order('created_at', { ascending: false }),
         supabase.from('workflows').select('subdomain_id').is('archived_at', null),
       ]);
 
@@ -85,13 +88,38 @@ export const Subdomains: React.FC = () => {
         }
       });
 
-      // Enhance subdomains with domain info and workflow counts
+      // Get unique creator IDs to fetch user info
+      const creatorIds = [...new Set(
+        subdomainsResult.data
+          .map(s => s.created_by)
+          .filter((id): id is string => id !== null)
+      )];
+
+      // Fetch creator information from auth.users (via admin API or stored profiles)
+      // Note: This requires a server-side function or profiles table in production
+      // For now, we'll use the current user's info if available
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+      // Create a map of creator info
+      const creatorMap = new Map<string, { name: string; email: string }>();
+      if (currentUser) {
+        creatorMap.set(currentUser.id, {
+          name: currentUser.user_metadata?.full_name || currentUser.user_metadata?.name || currentUser.email?.split('@')[0] || 'User',
+          email: currentUser.email || ''
+        });
+      }
+
+      // Enhance subdomains with domain info, workflow counts, and creator info
       const subdomainsWithDetails: SubdomainWithDetails[] = subdomainsResult.data.map((subdomain) => {
         const domain = domainsResult.data.find((d) => d.id === subdomain.domain_id);
+        const creator = subdomain.created_by ? creatorMap.get(subdomain.created_by) : null;
+
         return {
           ...subdomain,
           domain,
           workflowCount: workflowCounts.get(subdomain.id) || 0,
+          creator_name: creator?.name || (subdomain.created_by ? 'System User' : 'Unknown'),
+          creator_email: creator?.email || '',
         };
       });
 
@@ -212,15 +240,25 @@ export const Subdomains: React.FC = () => {
               </p>
             )}
 
-            <div className="flex items-center justify-between text-xs text-gray-500 pt-3 border-t">
-              <div className="flex items-center">
-                <Folder className="w-3 h-3 mr-1" />
-                <span className="truncate max-w-[150px]">{subdomain.domain?.name}</span>
+            <div className="space-y-2 pt-3 border-t">
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <div className="flex items-center">
+                  <Folder className="w-3 h-3 mr-1" />
+                  <span className="truncate max-w-[150px]">{subdomain.domain?.name}</span>
+                </div>
+                <div className="flex items-center">
+                  <Clock className="w-3 h-3 mr-1" />
+                  <span>{getRelativeTime(subdomain.created_at)}</span>
+                </div>
               </div>
-              <div className="flex items-center">
-                <Clock className="w-3 h-3 mr-1" />
-                <span>{getRelativeTime(subdomain.created_at)}</span>
-              </div>
+              {subdomain.creator_name && (
+                <div className="flex items-center text-xs text-gray-500">
+                  <UserIcon className="w-3 h-3 mr-1" />
+                  <span className="truncate" title={subdomain.creator_email || subdomain.creator_name}>
+                    {subdomain.creator_name}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -253,6 +291,12 @@ export const Subdomains: React.FC = () => {
                     <Clock className="w-3 h-3 mr-1" />
                     {formatDate(subdomain.created_at)}
                   </span>
+                  {subdomain.creator_name && (
+                    <span className="flex items-center" title={subdomain.creator_email || subdomain.creator_name}>
+                      <UserIcon className="w-3 h-3 mr-1" />
+                      {subdomain.creator_name}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -286,6 +330,9 @@ export const Subdomains: React.FC = () => {
               Workflows
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Creator
+            </th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
               Created
             </th>
           </tr>
@@ -317,8 +364,17 @@ export const Subdomains: React.FC = () => {
                   {subdomain.workflowCount}
                 </div>
               </td>
+              <td className="px-6 py-4 whitespace-nowrap">
+                <div className="flex items-center text-sm text-gray-600" title={subdomain.creator_email || subdomain.creator_name}>
+                  <UserIcon className="w-4 h-4 mr-1 text-gray-400" />
+                  {subdomain.creator_name || '-'}
+                </div>
+              </td>
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                {formatDate(subdomain.created_at)}
+                <div className="flex items-center">
+                  <Clock className="w-4 h-4 mr-1 text-gray-400" />
+                  {formatDate(subdomain.created_at)}
+                </div>
               </td>
             </tr>
           ))}
@@ -394,6 +450,12 @@ export const Subdomains: React.FC = () => {
                             <Clock className="w-3 h-3 mr-1" />
                             {formatDate(subdomain.created_at)}
                           </span>
+                          {subdomain.creator_name && (
+                            <span className="flex items-center" title={subdomain.creator_email || subdomain.creator_name}>
+                              <UserIcon className="w-3 h-3 mr-1" />
+                              {subdomain.creator_name}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
