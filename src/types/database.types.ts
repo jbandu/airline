@@ -1,3 +1,12 @@
+export interface User {
+  id: string;
+  email?: string;
+  raw_user_meta_data?: {
+    full_name?: string;
+    name?: string;
+  };
+}
+
 export interface Domain {
   id: string;
   name: string;
@@ -11,6 +20,7 @@ export interface Subdomain {
   domain_id: string;
   name: string;
   description: string;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
 }
