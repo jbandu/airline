@@ -69,7 +69,7 @@ export const Subdomains: React.FC = () => {
       // Load domains and subdomains
       const [domainsResult, subdomainsResult, workflowsResult] = await Promise.all([
         supabase.from('domains').select('*').order('name'),
-        supabase.from('subdomains').select('*').order('created_at', { ascending: false }),
+        supabase.from('subdomains').select('*').order('name'),
         supabase.from('workflows').select('subdomain_id').is('archived_at', null),
       ]);
 
