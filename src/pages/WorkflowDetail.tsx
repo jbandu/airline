@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Edit, Copy, MessageSquare, Paperclip, Activity, Trash2 } from 'lucide-react';
+import { ArrowLeft, CreditCard as Edit, Copy, MessageSquare, Paperclip, Activity, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { WorkflowWithRelations } from '../types/database.types';
 import { ConfirmDialog } from '../components/workflow/ConfirmDialog';
+import { useAuth } from '../contexts/AuthContext';
 
 type TabType = 'overview' | 'technical' | 'implementation' | 'collaboration';
 
 export const WorkflowDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [workflow, setWorkflow] = useState<WorkflowWithRelations | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -22,7 +24,20 @@ export const WorkflowDetail: React.FC = () => {
   const loadWorkflow = async (workflowId: string) => {
     const { data } = await supabase
       .from('workflows')
-      .select('*, domain:domains(*), subdomain:subdomains(*)')
+      .select(`
+        *,
+        subdomain:subdomains(
+          id,
+          name,
+          domain:domains(
+            id,
+            name
+          )
+        ),
+        current_version:workflow_versions!fk_workflows_current_version(
+          *
+        )
+      `)
       .eq('id', workflowId)
       .is('archived_at', null)
       .maybeSingle();
@@ -34,39 +49,57 @@ export const WorkflowDetail: React.FC = () => {
   };
 
   const handleClone = async () => {
-    if (!workflow) return;
+    if (!workflow || !workflow.current_version) return;
 
     setIsCloning(true);
     try {
-      const clonedData = {
-        name: `${workflow.name} (Copy)`,
-        description: workflow.description,
-        domain_id: workflow.domain_id,
-        subdomain_id: workflow.subdomain_id,
-        complexity: workflow.complexity,
-        agentic_potential: workflow.agentic_potential,
-        autonomy_level: workflow.autonomy_level,
-        implementation_wave: workflow.implementation_wave,
-        status: 'draft',
-        airline_type: workflow.airline_type,
-        agentic_function_type: workflow.agentic_function_type,
-        ai_enablers: workflow.ai_enablers,
-        systems_involved: workflow.systems_involved,
-        business_context: workflow.business_context,
-        expected_roi: workflow.expected_roi,
-        dependencies: workflow.dependencies,
-        parent_workflow_id: workflow.id,
-      };
+      const version = workflow.current_version;
 
-      const { data, error } = await supabase
+      const { data: newWorkflow, error: workflowError } = await supabase
         .from('workflows')
-        .insert(clonedData)
+        .insert({
+          name: `${workflow.name} (Copy)`,
+          subdomain_id: workflow.subdomain_id,
+          summary: version.workflow_description,
+          created_by: user?.id,
+        })
         .select()
         .single();
 
-      if (error) throw error;
+      if (workflowError) throw workflowError;
 
-      navigate(`/workflows/${data.id}`);
+      const { data: newVersion, error: versionError } = await supabase
+        .from('workflow_versions')
+        .insert({
+          workflow_id: newWorkflow.id,
+          status: 'draft',
+          domain: version.domain,
+          subdomain: version.subdomain,
+          workflow_name: `${workflow.name} (Copy)`,
+          workflow_description: version.workflow_description,
+          complexity: version.complexity,
+          agentic_potential: version.agentic_potential,
+          autonomy_level: version.autonomy_level,
+          implementation_wave: version.implementation_wave,
+          agentic_function_type: version.agentic_function_type,
+          ai_enabler_type: version.ai_enabler_type,
+          operational_context: version.operational_context,
+          expected_roi_levers: version.expected_roi_levers,
+          created_by: user?.id,
+        })
+        .select()
+        .single();
+
+      if (versionError) throw versionError;
+
+      const { error: updateError } = await supabase
+        .from('workflows')
+        .update({ current_version_id: newVersion.id })
+        .eq('id', newWorkflow.id);
+
+      if (updateError) throw updateError;
+
+      navigate(`/workflows/${newWorkflow.id}`);
     } catch (error) {
       console.error('Error cloning workflow:', error);
       alert('Failed to clone workflow. Please try again.');
@@ -190,25 +223,25 @@ export const WorkflowDetail: React.FC = () => {
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Description</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              {workflow.description || 'No description provided'}
+              {workflow.current_version?.workflow_description || 'No description provided'}
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
               <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Complexity</div>
-              <div className={`text-3xl font-bold mb-2 ${getComplexityColor(workflow.complexity)}`}>
-                {workflow.complexity}/5
+              <div className={`text-3xl font-bold mb-2 ${getComplexityColor(workflow.current_version?.complexity)}`}>
+                {workflow.current_version?.complexity || 0}/5
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">
-                {workflow.complexity <= 2 ? 'Low' : workflow.complexity === 3 ? 'Medium' : 'High'} complexity
+                {(workflow.current_version?.complexity || 0) <= 2 ? 'Low' : (workflow.current_version?.complexity || 0) === 3 ? 'Medium' : 'High'} complexity
               </div>
             </div>
 
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
               <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Agentic Potential</div>
               <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                {workflow.agentic_potential}/5
+                {workflow.current_version?.agentic_potential || 0}/5
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Automation opportunity</div>
             </div>
@@ -216,23 +249,23 @@ export const WorkflowDetail: React.FC = () => {
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
               <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Autonomy Level</div>
               <div className="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-2">
-                {workflow.autonomy_level}/5
+                {workflow.current_version?.autonomy_level || 0}/5
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400">Independence score</div>
             </div>
           </div>
 
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Business Context</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Operational Context</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              {workflow.business_context || 'No business context provided'}
+              {workflow.current_version?.operational_context || 'No operational context provided'}
             </p>
           </div>
 
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Expected ROI</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Expected ROI Levers</h2>
             <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-              {workflow.expected_roi || 'No ROI estimate provided'}
+              {workflow.current_version?.expected_roi_levers || 'No ROI levers specified'}
             </p>
           </div>
         </div>
@@ -243,15 +276,15 @@ export const WorkflowDetail: React.FC = () => {
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Agentic Function Type</h2>
             <span className="px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg font-medium">
-              {workflow.agentic_function_type || 'Not specified'}
+              {workflow.current_version?.agentic_function_type || 'Not specified'}
             </span>
           </div>
 
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">AI Enablers</h2>
             <div className="flex flex-wrap gap-2">
-              {workflow.ai_enablers && workflow.ai_enablers.length > 0 ? (
-                workflow.ai_enablers.map((enabler, index) => (
+              {workflow.current_version?.ai_enablers && workflow.current_version.ai_enablers.length > 0 ? (
+                workflow.current_version.ai_enablers.map((enabler, index) => (
                   <span
                     key={index}
                     className="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full text-sm"
@@ -268,8 +301,8 @@ export const WorkflowDetail: React.FC = () => {
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Systems Involved</h2>
             <div className="flex flex-wrap gap-2">
-              {workflow.systems_involved && workflow.systems_involved.length > 0 ? (
-                workflow.systems_involved.map((system, index) => (
+              {workflow.current_version?.systems_involved && workflow.current_version.systems_involved.length > 0 ? (
+                workflow.current_version.systems_involved.map((system, index) => (
                   <span
                     key={index}
                     className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg text-sm"
@@ -291,21 +324,21 @@ export const WorkflowDetail: React.FC = () => {
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Wave Assignment</h2>
             <div className="flex items-center gap-3">
               <span className="text-4xl font-bold text-blue-600 dark:text-blue-400">
-                Wave {workflow.implementation_wave}
+                Wave {workflow.current_version?.implementation_wave || 1}
               </span>
               <span className="text-gray-600 dark:text-gray-400">
-                {workflow.implementation_wave === 1 && '(Quick Wins)'}
-                {workflow.implementation_wave === 2 && '(Medium Priority)'}
-                {workflow.implementation_wave === 3 && '(Long Term)'}
+                {workflow.current_version?.implementation_wave === 1 && '(Quick Wins)'}
+                {workflow.current_version?.implementation_wave === 2 && '(Medium Priority)'}
+                {workflow.current_version?.implementation_wave === 3 && '(Long Term)'}
               </span>
             </div>
           </div>
 
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Dependencies</h2>
-            {workflow.dependencies && workflow.dependencies.length > 0 ? (
+            {workflow.current_version?.dependencies && workflow.current_version.dependencies.length > 0 ? (
               <ul className="space-y-2">
-                {workflow.dependencies.map((dep, index) => (
+                {workflow.current_version.dependencies.map((dep, index) => (
                   <li key={index} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                     <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
                     <span className="text-gray-700 dark:text-gray-300">{dep}</span>

@@ -63,18 +63,45 @@ export const WorkflowEdit: React.FC = () => {
   };
 
   const loadWorkflow = async (workflowId: string) => {
-    const { data } = await supabase
+    const { data: workflow } = await supabase
       .from('workflows')
-      .select('*')
+      .select(`
+        *,
+        subdomain:subdomains(
+          id,
+          name,
+          domain:domains(
+            id,
+            name
+          )
+        ),
+        current_version:workflow_versions!fk_workflows_current_version(
+          *
+        )
+      `)
       .eq('id', workflowId)
       .maybeSingle();
 
-    if (data) {
-      Object.keys(data).forEach(key => {
-        setValue(key as any, data[key]);
-      });
-      setIsLoading(false);
+    if (workflow?.current_version) {
+      const version = workflow.current_version;
+      setValue('name', workflow.name);
+      setValue('description', version.workflow_description || '');
+      setValue('subdomain_id', workflow.subdomain_id);
+      setValue('domain_id', workflow.subdomain?.domain?.id || '');
+      setValue('complexity', version.complexity || 3);
+      setValue('agentic_potential', version.agentic_potential || 3);
+      setValue('autonomy_level', version.autonomy_level || 3);
+      setValue('implementation_wave', version.implementation_wave || 1);
+      setValue('status', version.status || 'draft');
+      setValue('agentic_function_type', version.agentic_function_type || '');
+      setValue('business_context', version.operational_context || '');
+      setValue('expected_roi', version.expected_roi_levers || '');
+      setValue('ai_enablers', version.ai_enabler_type ? [version.ai_enabler_type] : []);
+      setValue('systems_involved', []);
+      setValue('dependencies', []);
+      setValue('airline_type', []);
     }
+    setIsLoading(false);
   };
 
   const onSubmit = async (data: WorkflowFormData) => {
@@ -82,15 +109,49 @@ export const WorkflowEdit: React.FC = () => {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase
+      const { data: workflow } = await supabase
+        .from('workflows')
+        .select('current_version_id')
+        .eq('id', id)
+        .single();
+
+      if (!workflow?.current_version_id) throw new Error('No current version found');
+
+      const { data: subdomain } = await supabase
+        .from('subdomains')
+        .select('name, domain:domains(name)')
+        .eq('id', data.subdomain_id)
+        .single();
+
+      await supabase
         .from('workflows')
         .update({
-          ...data,
-          updated_at: new Date().toISOString(),
+          name: data.name,
+          subdomain_id: data.subdomain_id,
+          summary: data.description,
         })
         .eq('id', id);
 
-      if (error) throw error;
+      const { error: versionError } = await supabase
+        .from('workflow_versions')
+        .update({
+          status: data.status,
+          domain: subdomain?.domain?.name || '',
+          subdomain: subdomain?.name || '',
+          workflow_name: data.name,
+          workflow_description: data.description,
+          complexity: data.complexity,
+          agentic_potential: data.agentic_potential,
+          autonomy_level: data.autonomy_level,
+          implementation_wave: data.implementation_wave,
+          agentic_function_type: data.agentic_function_type,
+          ai_enabler_type: data.ai_enablers?.[0] || null,
+          operational_context: data.business_context,
+          expected_roi_levers: data.expected_roi,
+        })
+        .eq('id', workflow.current_version_id);
+
+      if (versionError) throw versionError;
 
       navigate(`/workflows/${id}`);
     } catch (error) {

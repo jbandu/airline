@@ -1,15 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { ScatterChart, Scatter, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Download, TrendingUp } from 'lucide-react';
+import { ScatterChart, Scatter, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ReferenceLine } from 'recharts';
+import { Download, TrendingUp, Shield, Zap, Brain, Calendar, BarChart3, Network, GitBranch, Grid3x3, Database, Clock, GitMerge } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Workflow } from '../types/database.types';
+import { useNavigate } from 'react-router-dom';
+import { OntologyTree } from '../components/visualizations/OntologyTree';
+import { KnowledgeGraph } from '../components/visualizations/KnowledgeGraph';
+import { SemanticMatrix } from '../components/visualizations/SemanticMatrix';
+import { OntologyConceptMap } from '../components/visualizations/OntologyConceptMap';
+import { KnowledgeTimeline } from '../components/visualizations/KnowledgeTimeline';
+import { CrossDomainBridgeMap } from '../components/visualizations/CrossDomainBridgeMap';
+
+type TabType = 'overview' | 'ontology' | 'knowledge' | 'semantic' | 'schema' | 'timeline' | 'bridges';
 
 export const Analytics: React.FC = () => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [scatterData, setScatterData] = useState<any[]>([]);
   const [domainData, setDomainData] = useState<any[]>([]);
   const [waveData, setWaveData] = useState<any[]>([]);
   const [topWorkflows, setTopWorkflows] = useState<any[]>([]);
+  const [autonomyData, setAutonomyData] = useState<any[]>([]);
+  const [aiEnablersData, setAiEnablersData] = useState<any[]>([]);
+  const [timelineData, setTimelineData] = useState<any[]>([]);
 
   useEffect(() => {
     loadAnalyticsData();
@@ -18,23 +32,37 @@ export const Analytics: React.FC = () => {
   const loadAnalyticsData = async () => {
     const { data } = await supabase
       .from('workflows')
-      .select('*, domain:domains(name)')
+      .select(`
+        *,
+        subdomain:subdomains(
+          id,
+          name,
+          domain:domains(
+            id,
+            name
+          )
+        ),
+        current_version:workflow_versions!fk_workflows_current_version(
+          *
+        )
+      `)
       .is('archived_at', null);
 
     if (data) {
       setWorkflows(data);
 
       const scatter = data.map((w) => ({
+        id: w.id,
         name: w.name,
-        complexity: w.complexity,
-        potential: w.agentic_potential,
-        wave: w.implementation_wave,
+        complexity: w.current_version?.complexity || 3,
+        potential: w.current_version?.agentic_potential || 3,
+        wave: w.current_version?.implementation_wave || 1,
       }));
       setScatterData(scatter);
 
       const domainCounts: Record<string, number> = {};
       data.forEach((w) => {
-        const domainName = w.domain?.name || 'Uncategorized';
+        const domainName = w.subdomain?.domain?.name || 'Uncategorized';
         domainCounts[domainName] = (domainCounts[domainName] || 0) + 1;
       });
       const domainChartData = Object.entries(domainCounts).map(([name, count]) => ({
@@ -44,23 +72,62 @@ export const Analytics: React.FC = () => {
       setDomainData(domainChartData);
 
       const waveCounts = [
-        { name: 'Wave 1', value: data.filter((w) => w.implementation_wave === 1).length },
-        { name: 'Wave 2', value: data.filter((w) => w.implementation_wave === 2).length },
-        { name: 'Wave 3', value: data.filter((w) => w.implementation_wave === 3).length },
+        { name: 'Wave 1', value: data.filter((w) => w.current_version?.implementation_wave === 1).length },
+        { name: 'Wave 2', value: data.filter((w) => w.current_version?.implementation_wave === 2).length },
+        { name: 'Wave 3', value: data.filter((w) => w.current_version?.implementation_wave === 3).length },
       ];
       setWaveData(waveCounts);
 
       const top = data
-        .sort((a, b) => b.agentic_potential - a.agentic_potential)
+        .sort((a, b) => (b.current_version?.agentic_potential || 0) - (a.current_version?.agentic_potential || 0))
         .slice(0, 10)
         .map((w) => ({
           name: w.name,
-          potential: w.agentic_potential,
-          complexity: w.complexity,
-          wave: w.implementation_wave,
+          potential: w.current_version?.agentic_potential || 0,
+          complexity: w.current_version?.complexity || 0,
+          wave: w.current_version?.implementation_wave || 0,
         }));
       setTopWorkflows(top);
+
+      const autonomyCounts = [
+        { level: 'Level 1', count: data.filter((w) => w.current_version?.autonomy_level === 1).length },
+        { level: 'Level 2', count: data.filter((w) => w.current_version?.autonomy_level === 2).length },
+        { level: 'Level 3', count: data.filter((w) => w.current_version?.autonomy_level === 3).length },
+        { level: 'Level 4', count: data.filter((w) => w.current_version?.autonomy_level === 4).length },
+        { level: 'Level 5', count: data.filter((w) => w.current_version?.autonomy_level === 5).length },
+      ];
+      setAutonomyData(autonomyCounts);
+
+      const aiEnablersMap: Record<string, number> = {};
+      data.forEach((w) => {
+        const aiEnabler = w.current_version?.ai_enabler_type;
+        if (aiEnabler) {
+          aiEnablersMap[aiEnabler] = (aiEnablersMap[aiEnabler] || 0) + 1;
+        }
+      });
+      const aiEnablers = Object.entries(aiEnablersMap)
+        .map(([name, count]) => ({ name, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+      setAiEnablersData(aiEnablers);
+
+      const timeline = [
+        { wave: 'Wave 1', workflows: data.filter((w) => w.current_version?.implementation_wave === 1).length, avgComplexity: data.filter((w) => w.current_version?.implementation_wave === 1).reduce((acc, w) => acc + (w.current_version?.complexity || 0), 0) / (data.filter((w) => w.current_version?.implementation_wave === 1).length || 1) },
+        { wave: 'Wave 2', workflows: data.filter((w) => w.current_version?.implementation_wave === 2).length, avgComplexity: data.filter((w) => w.current_version?.implementation_wave === 2).reduce((acc, w) => acc + (w.current_version?.complexity || 0), 0) / (data.filter((w) => w.current_version?.implementation_wave === 2).length || 1) },
+        { wave: 'Wave 3', workflows: data.filter((w) => w.current_version?.implementation_wave === 3).length, avgComplexity: data.filter((w) => w.current_version?.implementation_wave === 3).reduce((acc, w) => acc + (w.current_version?.complexity || 0), 0) / (data.filter((w) => w.current_version?.implementation_wave === 3).length || 1) },
+      ];
+      setTimelineData(timeline);
     }
+  };
+
+  const handleScatterClick = (data: any) => {
+    if (data && data.id) {
+      navigate(`/workflows/${data.id}`);
+    }
+  };
+
+  const exportChart = (chartName: string) => {
+    console.log(`Exporting ${chartName}...`);
   };
 
   const COLORS = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#0EA5E9', '#8B5CF6'];
@@ -80,6 +147,98 @@ export const Analytics: React.FC = () => {
         </button>
       </div>
 
+      <div className="border-b border-gray-200 dark:border-gray-800">
+        <nav className="flex gap-4">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'overview'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <BarChart3 className="w-5 h-5" />
+            <span className="font-medium">Overview</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('ontology')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'ontology'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Network className="w-5 h-5" />
+            <span className="font-medium">Ontology Tree</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('knowledge')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'knowledge'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <GitBranch className="w-5 h-5" />
+            <span className="font-medium">Knowledge Graph</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('semantic')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'semantic'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Grid3x3 className="w-5 h-5" />
+            <span className="font-medium">Semantic Matrix</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('schema')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'schema'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Database className="w-5 h-5" />
+            <span className="font-medium">Ontology Schema</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('timeline')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'timeline'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <Clock className="w-5 h-5" />
+            <span className="font-medium">Knowledge Timeline</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('bridges')}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === 'bridges'
+                ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+            }`}
+          >
+            <GitMerge className="w-5 h-5" />
+            <span className="font-medium">Cross-Domain Bridges</span>
+          </button>
+        </nav>
+      </div>
+
+      {activeTab === 'ontology' && <OntologyTree />}
+      {activeTab === 'knowledge' && <KnowledgeGraph />}
+      {activeTab === 'semantic' && <SemanticMatrix />}
+      {activeTab === 'schema' && <OntologyConceptMap />}
+      {activeTab === 'timeline' && <KnowledgeTimeline />}
+      {activeTab === 'bridges' && <CrossDomainBridgeMap />}
+
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
           <div className="flex items-center gap-3 mb-2">
@@ -97,7 +256,7 @@ export const Analytics: React.FC = () => {
           </div>
           <div className="text-4xl font-bold text-gray-900 dark:text-white">
             {workflows.length > 0
-              ? (workflows.reduce((acc, w) => acc + w.agentic_potential, 0) / workflows.length).toFixed(1)
+              ? (workflows.reduce((acc, w) => acc + (w.current_version?.agentic_potential || 0), 0) / workflows.length).toFixed(1)
               : '0'}
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Out of 5.0</p>
@@ -110,7 +269,7 @@ export const Analytics: React.FC = () => {
           </div>
           <div className="text-4xl font-bold text-gray-900 dark:text-white">
             {workflows.length > 0
-              ? (workflows.reduce((acc, w) => acc + w.complexity, 0) / workflows.length).toFixed(1)
+              ? (workflows.reduce((acc, w) => acc + (w.current_version?.complexity || 0), 0) / workflows.length).toFixed(1)
               : '0'}
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Out of 5.0</p>
@@ -119,10 +278,18 @@ export const Analytics: React.FC = () => {
 
       <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-            Complexity vs Agentic Potential
-          </h2>
-          <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
+          <div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Complexity vs Agentic Potential Matrix
+            </h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Click any dot to view workflow details
+            </p>
+          </div>
+          <button
+            onClick={() => exportChart('complexity-matrix')}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
             Export Chart
           </button>
         </div>
@@ -130,6 +297,8 @@ export const Analytics: React.FC = () => {
           <ResponsiveContainer width="100%" height={400}>
             <ScatterChart>
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+              <ReferenceLine x={3} stroke="#6B7280" strokeDasharray="3 3" />
+              <ReferenceLine y={3} stroke="#6B7280" strokeDasharray="3 3" />
               <XAxis
                 type="number"
                 dataKey="complexity"
@@ -156,13 +325,163 @@ export const Analytics: React.FC = () => {
                 }}
               />
               <Legend />
-              <Scatter name="Wave 1" data={scatterData.filter((d) => d.wave === 1)} fill="#2563EB" />
-              <Scatter name="Wave 2" data={scatterData.filter((d) => d.wave === 2)} fill="#10B981" />
-              <Scatter name="Wave 3" data={scatterData.filter((d) => d.wave === 3)} fill="#F59E0B" />
+              <Scatter
+                name="Wave 1"
+                data={scatterData.filter((d) => d.wave === 1)}
+                fill="#2563EB"
+                onClick={handleScatterClick}
+                cursor="pointer"
+              />
+              <Scatter
+                name="Wave 2"
+                data={scatterData.filter((d) => d.wave === 2)}
+                fill="#10B981"
+                onClick={handleScatterClick}
+                cursor="pointer"
+              />
+              <Scatter
+                name="Wave 3"
+                data={scatterData.filter((d) => d.wave === 3)}
+                fill="#F59E0B"
+                onClick={handleScatterClick}
+                cursor="pointer"
+              />
             </ScatterChart>
           </ResponsiveContainer>
         ) : (
           <div className="h-96 flex items-center justify-center text-gray-400">No data available</div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Zap className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Autonomy Level Distribution
+              </h2>
+            </div>
+            <button
+              onClick={() => exportChart('autonomy-distribution')}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Export Chart
+            </button>
+          </div>
+          {autonomyData.some((d) => d.count > 0) ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={autonomyData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                <XAxis dataKey="level" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                <YAxis tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgb(17, 24, 39)',
+                    border: '1px solid rgb(55, 65, 81)',
+                    borderRadius: '0.5rem',
+                    color: '#fff',
+                  }}
+                />
+                <Bar dataKey="count" fill="#F59E0B" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-80 flex items-center justify-center text-gray-400">No data available</div>
+          )}
+        </div>
+
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Brain className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                Top AI Enablers
+              </h2>
+            </div>
+            <button
+              onClick={() => exportChart('ai-enablers')}
+              className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            >
+              Export Chart
+            </button>
+          </div>
+          {aiEnablersData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={aiEnablersData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                <XAxis type="number" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+                <YAxis dataKey="name" type="category" tick={{ fill: '#9CA3AF', fontSize: 11 }} width={100} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgb(17, 24, 39)',
+                    border: '1px solid rgb(55, 65, 81)',
+                    borderRadius: '0.5rem',
+                    color: '#fff',
+                  }}
+                />
+                <Bar dataKey="count" fill="#8B5CF6" radius={[0, 8, 8, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-80 flex items-center justify-center text-gray-400">No data available</div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Calendar className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Implementation Timeline
+            </h2>
+          </div>
+          <button
+            onClick={() => exportChart('timeline')}
+            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Export Chart
+          </button>
+        </div>
+        {timelineData.some((d) => d.workflows > 0) ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={timelineData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+              <XAxis dataKey="wave" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+              <YAxis yAxisId="left" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fill: '#9CA3AF', fontSize: 12 }} />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'rgb(17, 24, 39)',
+                  border: '1px solid rgb(55, 65, 81)',
+                  borderRadius: '0.5rem',
+                  color: '#fff',
+                }}
+              />
+              <Legend />
+              <Line
+                yAxisId="left"
+                type="monotone"
+                dataKey="workflows"
+                stroke="#2563EB"
+                strokeWidth={3}
+                dot={{ fill: '#2563EB', r: 6 }}
+                name="Workflows"
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="avgComplexity"
+                stroke="#10B981"
+                strokeWidth={3}
+                dot={{ fill: '#10B981', r: 6 }}
+                name="Avg Complexity"
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-80 flex items-center justify-center text-gray-400">No data available</div>
         )}
       </div>
 
@@ -310,6 +629,8 @@ export const Analytics: React.FC = () => {
           <div className="text-center py-8 text-gray-400">No workflows available</div>
         )}
       </div>
+        </div>
+      )}
     </div>
   );
 };

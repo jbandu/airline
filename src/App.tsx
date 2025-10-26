@@ -6,11 +6,16 @@ import { Layout } from './components/layout/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Domains } from './pages/Domains';
+import { Subdomains } from './pages/Subdomains';
 import { Workflows } from './pages/Workflows';
 import { WorkflowCreate } from './pages/WorkflowCreate';
 import { WorkflowEdit } from './pages/WorkflowEdit';
 import { WorkflowDetail } from './pages/WorkflowDetail';
 import { Analytics } from './pages/Analytics';
+import { AgentNetwork } from './pages/AgentNetwork';
+import { AgentPerformance } from './pages/AgentPerformance';
+import { OntologyTree } from './pages/OntologyTree';
+import { CrossDomainBridges } from './pages/CrossDomainBridges';
 import { Stakeholders } from './pages/Stakeholders';
 import { Settings } from './pages/Settings';
 
@@ -37,6 +42,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Domains />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subdomains"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Subdomains />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -87,6 +102,46 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Analytics />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/agents"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <AgentNetwork />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/performance"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <AgentPerformance />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ontology"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <OntologyTree />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/bridges"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CrossDomainBridges />
                   </Layout>
                 </ProtectedRoute>
               }
