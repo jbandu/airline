@@ -61,102 +61,38 @@ export const AgentPerformance: React.FC = () => {
         .from('v_agent_performance')
         .select('*');
 
-      if (perfError) throw perfError;
+      if (perfError) {
+        console.warn('Agent performance view not available:', perfError);
+        // View doesn't exist yet - set empty data
+        setMetrics([]);
+        setExecutions([]);
+        setTrends([]);
+      } else {
+        // If view exists, use real data
+        setMetrics(performanceData || []);
 
-      // Generate sample data for demonstration
-      const sampleMetrics: AgentMetrics[] = [
-        {
-          agent_type_id: 1,
-          code: 'route_optimizer',
-          name: 'Flight Route Optimizer',
-          category_code: 'optimizer',
-          total_instances: 5,
-          active_instances: 3,
-          total_executions: 1247,
-          avg_success_rate: 97.8,
-          avg_duration_ms: 1850,
-          last_execution_at: new Date(Date.now() - 300000).toISOString()
-        },
-        {
-          agent_type_id: 2,
-          code: 'weather_analyst',
-          name: 'Weather Analysis Agent',
-          category_code: 'observer',
-          total_instances: 8,
-          active_instances: 7,
-          total_executions: 3421,
-          avg_success_rate: 99.2,
-          avg_duration_ms: 620,
-          last_execution_at: new Date(Date.now() - 120000).toISOString()
-        },
-        {
-          agent_type_id: 3,
-          code: 'fuel_calculator',
-          name: 'Fuel Optimization Agent',
-          category_code: 'optimizer',
-          total_instances: 4,
-          active_instances: 4,
-          total_executions: 892,
-          avg_success_rate: 96.5,
-          avg_duration_ms: 2340,
-          last_execution_at: new Date(Date.now() - 180000).toISOString()
-        },
-        {
-          agent_type_id: 4,
-          code: 'crew_scheduler',
-          name: 'Crew Scheduling Agent',
-          category_code: 'executor',
-          total_instances: 3,
-          active_instances: 2,
-          total_executions: 567,
-          avg_success_rate: 94.3,
-          avg_duration_ms: 4120,
-          last_execution_at: new Date(Date.now() - 600000).toISOString()
-        },
-        {
-          agent_type_id: 5,
-          code: 'maintenance_predictor',
-          name: 'Predictive Maintenance Agent',
-          category_code: 'recommender',
-          total_instances: 6,
-          active_instances: 5,
-          total_executions: 2134,
-          avg_success_rate: 98.1,
-          avg_duration_ms: 1520,
-          last_execution_at: new Date(Date.now() - 240000).toISOString()
-        }
-      ];
+        // Try to load execution history if available
+        const { data: execData } = await supabase
+          .from('agent_executions')
+          .select('*')
+          .order('started_at', { ascending: false })
+          .limit(15);
 
-      setMetrics(sampleMetrics);
+        setExecutions(execData || []);
 
-      // Generate sample execution history
-      const sampleExecutions: ExecutionHistory[] = Array.from({ length: 15 }, (_, i) => ({
-        id: i + 1,
-        execution_id: `exec-${Math.random().toString(36).substr(2, 9)}`,
-        agent_name: sampleMetrics[i % 5].name,
-        workflow_name: 'Flight Planning Process',
-        status: i % 8 === 0 ? 'failed' : 'success',
-        started_at: new Date(Date.now() - (i * 300000)).toISOString(),
-        completed_at: new Date(Date.now() - (i * 300000) + 2000).toISOString(),
-        duration_ms: 1500 + Math.random() * 3000,
-        fallback_triggered: i % 10 === 0,
-        human_intervention_required: i % 15 === 0
-      }));
+        // Try to load performance trends
+        const { data: trendData } = await supabase
+          .from('v_agent_performance_trends')
+          .select('*')
+          .order('time', { ascending: true });
 
-      setExecutions(sampleExecutions);
-
-      // Generate sample trends
-      const sampleTrends: PerformanceTrend[] = Array.from({ length: 24 }, (_, i) => ({
-        time: `${23 - i}:00`,
-        success_rate: 94 + Math.random() * 5,
-        avg_duration: 1500 + Math.random() * 1000,
-        executions: Math.floor(100 + Math.random() * 150)
-      })).reverse();
-
-      setTrends(sampleTrends);
-
+        setTrends(trendData || []);
+      }
     } catch (error) {
       console.error('Error loading agent performance data:', error);
+      setMetrics([]);
+      setExecutions([]);
+      setTrends([]);
     } finally {
       setLoading(false);
     }
@@ -219,6 +155,8 @@ export const AgentPerformance: React.FC = () => {
     );
   }
 
+  const hasData = metrics.length > 0 || executions.length > 0 || trends.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
@@ -253,6 +191,23 @@ export const AgentPerformance: React.FC = () => {
       </div>
 
       <div className="p-6">
+        {!hasData ? (
+          <div className="flex items-center justify-center py-32">
+            <div className="text-center max-w-md">
+              <Activity className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                No Performance Data Available
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Agent performance metrics will appear here once agents are deployed and start executing workflows.
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-500">
+                The required database views (v_agent_performance, agent_executions, v_agent_performance_trends) are not yet configured.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
         <div className="grid grid-cols-4 gap-6 mb-6">
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between mb-2">
@@ -433,6 +388,8 @@ export const AgentPerformance: React.FC = () => {
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );
