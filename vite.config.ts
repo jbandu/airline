@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
 
   // Base path for GitHub Pages deployment
-  base: '/airline/',
+  base: '/',
 
   // Build configuration
   build: {
