@@ -6,6 +6,7 @@ import { Layout } from './components/layout/Layout';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Domains } from './pages/Domains';
+import { Subdomains } from './pages/Subdomains';
 import { Workflows } from './pages/Workflows';
 import { WorkflowCreate } from './pages/WorkflowCreate';
 import { WorkflowEdit } from './pages/WorkflowEdit';
@@ -41,6 +42,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <Domains />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/subdomains"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <Subdomains />
                   </Layout>
                 </ProtectedRoute>
               }

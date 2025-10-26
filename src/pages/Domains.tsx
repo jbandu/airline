@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Folder, Plus, Search, TrendingUp, Layers, Activity, Upload, X } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Domain, Subdomain } from '../types/database.types';
 
@@ -10,6 +11,7 @@ interface DomainWithStats extends Domain {
 }
 
 export const Domains: React.FC = () => {
+  const navigate = useNavigate();
   const [domains, setDomains] = useState<DomainWithStats[]>([]);
   const [subdomains, setSubdomains] = useState<Subdomain[]>([]);
   const [selectedDomain, setSelectedDomain] = useState<DomainWithStats | null>(null);
@@ -186,6 +188,10 @@ export const Domains: React.FC = () => {
     } finally {
       setUploading(false);
     }
+  };
+
+  const handleSubdomainClick = (subdomainId: string) => {
+    navigate(`/subdomains?subdomain=${subdomainId}`);
   };
 
   return (
@@ -417,11 +423,15 @@ export const Domains: React.FC = () => {
                 <div className="space-y-2">
                   {getSubdomainsForDomain(selectedDomain.id).length > 0 ? (
                     getSubdomainsForDomain(selectedDomain.id).map((subdomain) => (
-                      <div key={subdomain.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                      <div
+                        key={subdomain.id}
+                        onClick={() => handleSubdomainClick(subdomain.id)}
+                        className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-700 border border-transparent transition-all cursor-pointer group"
+                      >
                         <div className="flex items-center gap-3">
-                          <Folder className="w-5 h-5 text-gray-400" />
+                          <Folder className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900 dark:text-white">{subdomain.name}</div>
+                            <div className="font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{subdomain.name}</div>
                             {subdomain.description && (
                               <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{subdomain.description}</div>
                             )}
