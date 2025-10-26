@@ -23,7 +23,7 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter basename="/airline">
+        <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route
