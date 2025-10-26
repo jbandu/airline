@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { logDatabaseError } from '../lib/errorLogger';
+import { validateWorkflowWithRelations } from '../lib/dataValidator';
 
 interface WorkflowFormData {
   name: string;
@@ -63,45 +65,59 @@ export const WorkflowEdit: React.FC = () => {
   };
 
   const loadWorkflow = async (workflowId: string) => {
-    const { data: workflow } = await supabase
-      .from('workflows')
-      .select(`
-        *,
-        subdomain:subdomains(
-          id,
-          name,
-          domain:domains(
+    try {
+      const { data: workflow, error } = await supabase
+        .from('workflows')
+        .select(`
+          *,
+          subdomain:subdomains(
             id,
-            name
+            name,
+            domain:domains(
+              id,
+              name
+            )
           )
-        ),
-        current_version:workflow_versions!fk_workflows_current_version(
-          *
-        )
-      `)
-      .eq('id', workflowId)
-      .maybeSingle();
+        `)
+        .eq('id', workflowId)
+        .maybeSingle();
 
-    if (workflow?.current_version) {
-      const version = workflow.current_version;
-      setValue('name', workflow.name);
-      setValue('description', version.workflow_description || '');
-      setValue('subdomain_id', workflow.subdomain_id);
-      setValue('domain_id', workflow.subdomain?.domain?.id || '');
-      setValue('complexity', version.complexity || 3);
-      setValue('agentic_potential', version.agentic_potential || 3);
-      setValue('autonomy_level', version.autonomy_level || 3);
-      setValue('implementation_wave', version.implementation_wave || 1);
-      setValue('status', version.status || 'draft');
-      setValue('agentic_function_type', version.agentic_function_type || '');
-      setValue('business_context', version.operational_context || '');
-      setValue('expected_roi', version.expected_roi_levers || '');
-      setValue('ai_enablers', version.ai_enabler_type ? [version.ai_enabler_type] : []);
-      setValue('systems_involved', []);
-      setValue('dependencies', []);
-      setValue('airline_type', []);
+      if (error) {
+        logDatabaseError('Failed to load workflow for editing', error, {
+          table: 'workflows',
+          operation: 'select',
+          query: 'loadWorkflow',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (workflow && validateWorkflowWithRelations(workflow, 'loadWorkflow')) {
+        setValue('name', workflow.name);
+        setValue('description', workflow.description || '');
+        setValue('subdomain_id', workflow.subdomain_id);
+        setValue('domain_id', workflow.subdomain?.domain?.id || '');
+        setValue('complexity', workflow.complexity || 3);
+        setValue('agentic_potential', workflow.agentic_potential || 3);
+        setValue('autonomy_level', workflow.autonomy_level || 3);
+        setValue('implementation_wave', workflow.implementation_wave || 1);
+        setValue('status', workflow.status || 'draft');
+        setValue('agentic_function_type', workflow.agentic_function_type || '');
+        setValue('business_context', workflow.business_context || '');
+        setValue('expected_roi', workflow.expected_roi || '');
+        setValue('ai_enablers', workflow.ai_enablers || []);
+        setValue('systems_involved', workflow.systems_involved || []);
+        setValue('dependencies', workflow.dependencies || []);
+        setValue('airline_type', workflow.airline_type || []);
+      }
+    } catch (error) {
+      logDatabaseError('Unexpected error loading workflow for editing', error, {
+        table: 'workflows',
+        operation: 'select',
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const onSubmit = async (data: WorkflowFormData) => {
@@ -109,49 +125,36 @@ export const WorkflowEdit: React.FC = () => {
 
     setIsSaving(true);
     try {
-      const { data: workflow } = await supabase
-        .from('workflows')
-        .select('current_version_id')
-        .eq('id', id)
-        .single();
-
-      if (!workflow?.current_version_id) throw new Error('No current version found');
-
-      const { data: subdomain } = await supabase
-        .from('subdomains')
-        .select('name, domain:domains(name)')
-        .eq('id', data.subdomain_id)
-        .single();
-
-      await supabase
+      const { error } = await supabase
         .from('workflows')
         .update({
           name: data.name,
+          description: data.description,
+          domain_id: data.domain_id,
           subdomain_id: data.subdomain_id,
-          summary: data.description,
-        })
-        .eq('id', id);
-
-      const { error: versionError } = await supabase
-        .from('workflow_versions')
-        .update({
-          status: data.status,
-          domain: subdomain?.domain?.name || '',
-          subdomain: subdomain?.name || '',
-          workflow_name: data.name,
-          workflow_description: data.description,
           complexity: data.complexity,
           agentic_potential: data.agentic_potential,
           autonomy_level: data.autonomy_level,
           implementation_wave: data.implementation_wave,
+          status: data.status,
+          airline_type: data.airline_type,
           agentic_function_type: data.agentic_function_type,
-          ai_enabler_type: data.ai_enablers?.[0] || null,
-          operational_context: data.business_context,
-          expected_roi_levers: data.expected_roi,
+          ai_enablers: data.ai_enablers,
+          systems_involved: data.systems_involved,
+          business_context: data.business_context,
+          expected_roi: data.expected_roi,
+          dependencies: data.dependencies,
         })
-        .eq('id', workflow.current_version_id);
+        .eq('id', id);
 
-      if (versionError) throw versionError;
+      if (error) {
+        logDatabaseError('Failed to update workflow', error, {
+          table: 'workflows',
+          operation: 'update',
+          query: 'onSubmit',
+        });
+        throw error;
+      }
 
       navigate(`/workflows/${id}`);
     } catch (error) {

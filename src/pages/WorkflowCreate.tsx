@@ -4,6 +4,8 @@ import { useForm } from 'react-hook-form';
 import { ArrowLeft, ArrowRight, Save, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { logDatabaseError } from '../lib/errorLogger';
+import { validateWorkflow } from '../lib/dataValidator';
 
 interface WorkflowFormData {
   name: string;
@@ -114,54 +116,39 @@ export const WorkflowCreate: React.FC = () => {
         .from('workflows')
         .insert({
           name: data.name,
+          description: data.description,
+          domain_id: data.domain_id,
           subdomain_id: data.subdomain_id,
-          summary: data.description,
-          created_by: user?.id,
-        })
-        .select()
-        .single();
-
-      if (workflowError) throw workflowError;
-
-      const { data: subdomain } = await supabase
-        .from('subdomains')
-        .select('name, domain:domains(name)')
-        .eq('id', data.subdomain_id)
-        .single();
-
-      const { data: versionData, error: versionError } = await supabase
-        .from('workflow_versions')
-        .insert({
-          workflow_id: workflowData.id,
-          status: data.status,
-          domain: subdomain?.domain?.name || '',
-          subdomain: subdomain?.name || '',
-          workflow_name: data.name,
-          workflow_description: data.description,
           complexity: data.complexity,
           agentic_potential: data.agentic_potential,
           autonomy_level: data.autonomy_level,
           implementation_wave: data.implementation_wave,
+          status: data.status,
+          airline_type: data.airline_type,
           agentic_function_type: data.agentic_function_type,
-          ai_enabler_type: data.ai_enablers?.[0] || null,
-          operational_context: data.business_context,
-          expected_roi_levers: data.expected_roi,
+          ai_enablers: data.ai_enablers,
+          systems_involved: data.systems_involved,
+          business_context: data.business_context,
+          expected_roi: data.expected_roi,
+          dependencies: data.dependencies,
           created_by: user?.id,
         })
         .select()
         .single();
 
-      if (versionError) throw versionError;
+      if (workflowError) {
+        logDatabaseError('Failed to create workflow', workflowError, {
+          table: 'workflows',
+          operation: 'insert',
+          query: 'onSubmit',
+        });
+        throw workflowError;
+      }
 
-      const { error: updateError } = await supabase
-        .from('workflows')
-        .update({ current_version_id: versionData.id })
-        .eq('id', workflowData.id);
-
-      if (updateError) throw updateError;
-
-      clearDraft();
-      navigate('/workflows');
+      if (workflowData && validateWorkflow(workflowData, 'onSubmit')) {
+        clearDraft();
+        navigate('/workflows');
+      }
     } catch (error) {
       console.error('Error creating workflow:', error);
       alert('Failed to create workflow. Please try again.');

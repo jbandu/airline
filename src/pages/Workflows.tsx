@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Filter, Plus, LayoutGrid, List, Eye, Edit } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { WorkflowWithRelations } from '../types/database.types';
+import { logDatabaseError } from '../lib/errorLogger';
+import { validateWorkflowsWithRelations } from '../lib/dataValidator';
 
 type ViewMode = 'cards' | 'table';
 
@@ -43,23 +45,35 @@ export const Workflows: React.FC = () => {
               id,
               name
             )
-          ),
-          current_version:workflow_versions!fk_workflows_current_version(
-            *
           )
         `)
         .is('archived_at', null)
         .order('created_at', { ascending: false });
 
       if (error) {
+        logDatabaseError('Failed to load workflows', error, {
+          table: 'workflows',
+          operation: 'select',
+          query: 'loadWorkflows',
+        });
         console.error('Error loading workflows:', error);
         return;
       }
 
       if (data) {
-        setWorkflows(data as any);
+        // Validate data structure
+        if (validateWorkflowsWithRelations(data, 'loadWorkflows')) {
+          setWorkflows(data);
+        } else {
+          console.warn('Received invalid workflow data structure');
+          setWorkflows(data as any); // Set anyway but log warning
+        }
       }
     } catch (err) {
+      logDatabaseError('Unexpected error loading workflows', err, {
+        table: 'workflows',
+        operation: 'select',
+      });
       console.error('Unexpected error loading workflows:', err);
     } finally {
       setLoading(false);
@@ -72,21 +86,21 @@ export const Workflows: React.FC = () => {
     if (searchTerm) {
       filtered = filtered.filter(w =>
         w.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (w.summary && w.summary.toLowerCase().includes(searchTerm.toLowerCase()))
+        (w.description && w.description.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
     if (filters.wave !== 'all') {
-      filtered = filtered.filter(w => w.current_version?.implementation_wave === parseInt(filters.wave));
+      filtered = filtered.filter(w => w.implementation_wave === parseInt(filters.wave));
     }
 
     if (filters.status.length > 0) {
-      filtered = filtered.filter(w => w.current_version && filters.status.includes(w.current_version.status));
+      filtered = filtered.filter(w => filters.status.includes(w.status));
     }
 
     filtered = filtered.filter(
       w => {
-        const complexity = w.current_version?.complexity || 3;
+        const complexity = w.complexity || 3;
         return complexity >= filters.complexityMin && complexity <= filters.complexityMax;
       }
     );
@@ -122,9 +136,9 @@ export const Workflows: React.FC = () => {
 
   const stats = {
     total: workflows.length,
-    highPotential: workflows.filter(w => (w.current_version?.agentic_potential || 0) >= 4).length,
-    complex: workflows.filter(w => (w.current_version?.complexity || 0) >= 4).length,
-    active: workflows.filter(w => w.current_version?.status === 'in-progress' || w.current_version?.status === 'completed').length,
+    highPotential: workflows.filter(w => (w.agentic_potential || 0) >= 4).length,
+    complex: workflows.filter(w => (w.complexity || 0) >= 4).length,
+    active: workflows.filter(w => w.status === 'in-progress' || w.status === 'completed').length,
   };
 
   return (
@@ -317,8 +331,8 @@ export const Workflows: React.FC = () => {
       ) : viewMode === 'cards' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredWorkflows.map((workflow) => {
-            const complexity = workflow.current_version?.complexity || 0;
-            const potential = workflow.current_version?.agentic_potential || 0;
+            const complexity = workflow.complexity || 0;
+            const potential = workflow.agentic_potential || 0;
 
             return (
               <div
@@ -333,8 +347,8 @@ export const Workflows: React.FC = () => {
                     <h3 className="font-bold text-lg text-gray-900 dark:text-white line-clamp-2 pr-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {workflow.name}
                     </h3>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${getStatusColor(workflow.current_version?.status || 'draft')}`}>
-                      {workflow.current_version?.status || 'draft'}
+                    <span className={`px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${getStatusColor(workflow.status || 'draft')}`}>
+                      {workflow.status || 'draft'}
                     </span>
                   </div>
 
@@ -355,7 +369,7 @@ export const Workflows: React.FC = () => {
                   </div>
 
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 min-h-[2.5rem]">
-                    {workflow.summary || workflow.current_version?.workflow_description || 'No description'}
+                    {workflow.description || 'No description'}
                   </p>
 
                   <div className="space-y-3 mb-4">
@@ -387,14 +401,14 @@ export const Workflows: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-2 mb-4">
-                    {workflow.current_version?.implementation_wave && (
+                    {workflow.implementation_wave && (
                       <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded">
-                        Wave {workflow.current_version.implementation_wave}
+                        Wave {workflow.implementation_wave}
                       </span>
                     )}
-                    {workflow.current_version?.autonomy_level && (
+                    {workflow.autonomy_level && (
                       <span className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 rounded">
-                        L{workflow.current_version.autonomy_level}
+                        L{workflow.autonomy_level}
                       </span>
                     )}
                   </div>
@@ -468,19 +482,19 @@ export const Workflows: React.FC = () => {
                     {workflow.subdomain?.domain?.name || '-'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
-                    Wave {workflow.current_version?.implementation_wave || '-'}
+                    Wave {workflow.implementation_wave || '-'}
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${getComplexityColor(workflow.current_version?.complexity || 3)}`}>
-                      {workflow.current_version?.complexity || '-'}/5
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${getComplexityColor(workflow.complexity || 3)}`}>
+                      {workflow.complexity || '-'}/5
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                    {workflow.current_version?.agentic_potential || '-'}/5
+                    {workflow.agentic_potential || '-'}/5
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(workflow.current_version?.status || 'draft')}`}>
-                      {workflow.current_version?.status || 'draft'}
+                    <span className={`px-2 py-1 text-xs font-medium rounded ${getStatusColor(workflow.status || 'draft')}`}>
+                      {workflow.status || 'draft'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
