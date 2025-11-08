@@ -47,12 +47,16 @@ export const Domains: React.FC = () => {
 
             let workflowCount = 0;
             if (subdomainIds.length > 0) {
-              const { data, count } = await supabase
+              const { data, count, error } = await supabase
                 .from('workflows')
                 .select('id', { count: 'exact' })
                 .in('subdomain_id', subdomainIds)
                 .is('archived_at', null);
 
+              if (error) {
+                console.error(`Error counting workflows for domain ${domain.name}:`, error);
+              }
+              console.log(`Domain "${domain.name}": ${subdomainIds.length} subdomains, ${count || 0} workflows`, { subdomainIds, data });
               workflowCount = count || 0;
             }
 
