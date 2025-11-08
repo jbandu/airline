@@ -47,9 +47,9 @@ export const Domains: React.FC = () => {
 
             let workflowCount = 0;
             if (subdomainIds.length > 0) {
-              const { count } = await supabase
+              const { data, count } = await supabase
                 .from('workflows')
-                .select('*', { count: 'exact', head: true })
+                .select('id', { count: 'exact' })
                 .in('subdomain_id', subdomainIds)
                 .is('archived_at', null);
 
