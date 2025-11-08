@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Folder, FileText, BarChart3, Bot, Activity, Network, GitBranch, Users, Settings, ChevronLeft, ChevronRight, Plane } from 'lucide-react';
+import { Home, Folder, FolderTree, FileText, BarChart3, Bot, Activity, Network, GitBranch, Users, Settings, ChevronLeft, ChevronRight, Plane } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -9,8 +9,8 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  { icon: Home, label: 'Dashboard', path: '/' },
   { icon: Folder, label: 'Domains', path: '/domains' },
+  { icon: FolderTree, label: 'Subdomains', path: '/subdomains' },
   { icon: FileText, label: 'Workflows', path: '/workflows' },
   { icon: BarChart3, label: 'Analytics', path: '/analytics' },
   { icon: Bot, label: 'Agents', path: '/agents' },
@@ -19,6 +19,7 @@ const menuItems = [
   { icon: GitBranch, label: 'Bridges', path: '/bridges' },
   { icon: Users, label: 'Stakeholders', path: '/stakeholders' },
   { icon: Settings, label: 'Settings', path: '/settings' },
+  { icon: Home, label: 'Dashboard', path: '/' },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
