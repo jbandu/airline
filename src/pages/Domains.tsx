@@ -28,45 +28,53 @@ export const Domains: React.FC = () => {
     try {
       setLoading(true);
 
-      const [domainsResult, subdomainsResult] = await Promise.all([
+      const [domainsResult, subdomainsResult, workflowsResult] = await Promise.all([
         supabase.from('domains').select('*').order('name'),
         supabase.from('subdomains').select('*').order('name'),
+        supabase.from('workflows').select('id, subdomain_id').is('archived_at', null),
       ]);
 
       if (domainsResult.data && subdomainsResult.data) {
         setSubdomains(subdomainsResult.data);
 
-        const domainsWithStats: DomainWithStats[] = await Promise.all(
-          domainsResult.data.map(async (domain) => {
-            const domainSubdomains = subdomainsResult.data.filter(
-              (sd) => sd.domain_id === domain.id
-            );
-            const subdomainCount = domainSubdomains.length;
-
-            const subdomainIds = domainSubdomains.map(sd => sd.id);
-
-            let workflowCount = 0;
-            if (subdomainIds.length > 0) {
-              const { data, count, error } = await supabase
-                .from('workflows')
-                .select('id', { count: 'exact' })
-                .in('subdomain_id', subdomainIds)
-                .is('archived_at', null);
-
-              if (error) {
-                console.error(`Error counting workflows for domain ${domain.name}:`, error);
-              }
-              console.log(`Domain "${domain.name}": ${subdomainIds.length} subdomains, ${count || 0} workflows`, { subdomainIds, data });
-              workflowCount = count || 0;
+        // Create a map of subdomain_id -> workflow count
+        const workflowCountBySubdomain = new Map<string, number>();
+        if (workflowsResult.data) {
+          workflowsResult.data.forEach((workflow) => {
+            if (workflow.subdomain_id) {
+              workflowCountBySubdomain.set(
+                workflow.subdomain_id,
+                (workflowCountBySubdomain.get(workflow.subdomain_id) || 0) + 1
+              );
             }
+          });
+        }
 
-            return {
-              ...domain,
-              subdomainCount,
-              workflowCount,
-            };
-          })
-        );
+        // Calculate stats for each domain
+        const domainsWithStats: DomainWithStats[] = domainsResult.data.map((domain) => {
+          const domainSubdomains = subdomainsResult.data.filter(
+            (sd) => sd.domain_id === domain.id
+          );
+          const subdomainCount = domainSubdomains.length;
+
+          // Sum up workflows for all subdomains in this domain
+          let workflowCount = 0;
+          domainSubdomains.forEach((subdomain) => {
+            workflowCount += workflowCountBySubdomain.get(subdomain.id) || 0;
+          });
+
+          return {
+            ...domain,
+            subdomainCount,
+            workflowCount,
+          };
+        });
+
+        console.log('Workflow count summary:', {
+          totalWorkflows: workflowsResult.data?.length || 0,
+          workflowsWithSubdomain: workflowsResult.data?.filter(w => w.subdomain_id).length || 0,
+          workflowsWithoutSubdomain: workflowsResult.data?.filter(w => !w.subdomain_id).length || 0,
+        });
 
         setDomains(domainsWithStats);
       }
