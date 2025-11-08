@@ -75,21 +75,6 @@ export const AgentNetwork: React.FC = () => {
     }
   };
 
-  const categoryStats = agents.reduce((acc, agent) => {
-    const category = agent.category_name;
-    if (!acc[category]) {
-      acc[category] = { count: 0, color: agent.color, icon: agent.icon };
-    }
-    acc[category].count++;
-    return acc;
-  }, {} as Record<string, { count: number; color: string; icon: string }>);
-
-  const totalWorkflows = agents.reduce((sum, agent) => sum + agent.workflow_count, 0);
-  const totalInstances = agents.reduce((sum, agent) => sum + agent.active_instances, 0);
-  const avgAutonomy = agents.length > 0
-    ? (agents.reduce((sum, agent) => sum + agent.autonomy_level, 0) / agents.length).toFixed(1)
-    : 0;
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -117,6 +102,21 @@ export const AgentNetwork: React.FC = () => {
       </div>
     );
   }
+
+  const categoryStats = agents.reduce((acc, agent) => {
+    const category = agent.category_name;
+    if (!acc[category]) {
+      acc[category] = { count: 0, color: agent.color, icon: agent.icon };
+    }
+    acc[category].count++;
+    return acc;
+  }, {} as Record<string, { count: number; color: string; icon: string }>);
+
+  const totalWorkflows = agents.reduce((sum, agent) => sum + agent.workflow_count, 0);
+  const totalInstances = agents.reduce((sum, agent) => sum + agent.active_instances, 0);
+  const avgAutonomy = agents.length > 0
+    ? (agents.reduce((sum, agent) => sum + agent.autonomy_level, 0) / agents.length).toFixed(1)
+    : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
