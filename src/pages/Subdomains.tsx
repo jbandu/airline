@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Domain, Subdomain, User } from '../types/database.types';
 import {
@@ -478,7 +478,7 @@ export const Subdomains: React.FC = () => {
   }
 
   // Group subdomains by domain
-  const groupedByDomain = React.useMemo(() => {
+  const groupedByDomain = useMemo(() => {
     const grouped = new Map<string, { domain: Domain; subdomains: SubdomainWithDetails[] }>();
 
     filteredSubdomains.forEach((subdomain) => {
