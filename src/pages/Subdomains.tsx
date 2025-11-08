@@ -145,7 +145,7 @@ export const Subdomains: React.FC = () => {
       filtered = filtered.filter(
         (s) =>
           s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          s.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           s.domain?.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
