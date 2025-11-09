@@ -11,11 +11,11 @@ import { Workflows } from './pages/Workflows';
 import { WorkflowCreate } from './pages/WorkflowCreate';
 import { WorkflowEdit } from './pages/WorkflowEdit';
 import { WorkflowDetail } from './pages/WorkflowDetail';
-import { Analytics } from './pages/Analytics';
 import { AgentNetwork } from './pages/AgentNetwork';
-import { AgentPerformance } from './pages/AgentPerformance';
+import { KnowledgeGraphPage } from './pages/KnowledgeGraphPage';
 import { OntologyTree } from './pages/OntologyTree';
 import { CrossDomainBridges } from './pages/CrossDomainBridges';
+import { SemanticMatrixPage } from './pages/SemanticMatrixPage';
 import { Stakeholders } from './pages/Stakeholders';
 import { Settings } from './pages/Settings';
 import { DebugDashboard } from './pages/DebugDashboard';
@@ -98,16 +98,6 @@ function App() {
               }
             />
             <Route
-              path="/analytics"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Analytics />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/agents"
               element={
                 <ProtectedRoute>
@@ -118,11 +108,11 @@ function App() {
               }
             />
             <Route
-              path="/performance"
+              path="/knowledge-graph"
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <AgentPerformance />
+                    <KnowledgeGraphPage />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -143,6 +133,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <CrossDomainBridges />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/semantic-matrix"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SemanticMatrixPage />
                   </Layout>
                 </ProtectedRoute>
               }

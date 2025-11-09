@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Folder, FileText, BarChart3, Bot, Activity, Network, GitBranch, Users, Settings, ChevronLeft, ChevronRight, Plane } from 'lucide-react';
+import { Home, Folder, FileText, Bot, Network, GitBranch, Grid3x3, Users, Settings, ChevronLeft, ChevronRight, Plane, TreeDeciduous } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -8,17 +8,31 @@ interface SidebarProps {
   onToggle: () => void;
 }
 
-const menuItems = [
-  { icon: Folder, label: 'Domains', path: '/domains' },
-  { icon: FileText, label: 'Workflows', path: '/workflows' },
-  { icon: BarChart3, label: 'Analytics', path: '/analytics' },
-  { icon: Bot, label: 'Agents', path: '/agents' },
-  { icon: Activity, label: 'Performance', path: '/performance' },
-  { icon: Network, label: 'Ontology', path: '/ontology' },
-  { icon: GitBranch, label: 'Bridges', path: '/bridges' },
-  { icon: Users, label: 'Stakeholders', path: '/stakeholders' },
-  { icon: Settings, label: 'Settings', path: '/settings' },
-  { icon: Home, label: 'Dashboard', path: '/' },
+interface MenuItem {
+  icon: React.ElementType;
+  label: string;
+  path: string;
+  section?: string;
+}
+
+const menuSections = [
+  {
+    title: 'AIRLINE STRUCTURE',
+    items: [
+      { icon: Folder, label: 'Domains', path: '/domains' },
+      { icon: FileText, label: 'Workflows', path: '/workflows' },
+      { icon: Bot, label: 'Agents', path: '/agents' },
+    ]
+  },
+  {
+    title: 'KNOWLEDGE VIEWS',
+    items: [
+      { icon: Network, label: 'Knowledge Graph', path: '/knowledge-graph' },
+      { icon: TreeDeciduous, label: 'Ontology Tree', path: '/ontology' },
+      { icon: GitBranch, label: 'Cross-Domain Bridges', path: '/bridges' },
+      { icon: Grid3x3, label: 'Semantic Matrix', path: '/semantic-matrix' },
+    ]
+  },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
@@ -51,26 +65,91 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
           )}
         </div>
 
-        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-          {menuItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-            return (
+        <nav className="flex-1 p-4 overflow-y-auto">
+          {/* Dashboard */}
+          <Link
+            to="/"
+            className={`flex items-center gap-3 px-3 py-2 mb-4 rounded-lg transition-colors ${
+              location.pathname === '/'
+                ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+            title={collapsed ? 'Dashboard' : undefined}
+          >
+            <Home className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
+            {!collapsed && <span className="font-medium">Dashboard</span>}
+          </Link>
+
+          {/* Menu Sections */}
+          {menuSections.map((section, sectionIndex) => (
+            <div key={section.title} className={sectionIndex > 0 ? 'mt-6' : ''}>
+              {!collapsed && (
+                <h3 className="px-3 mb-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {section.title}
+                </h3>
+              )}
+              {collapsed && (
+                <div className="border-t border-gray-200 dark:border-gray-700 mb-2" />
+              )}
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                        isActive
+                          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                      }`}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
+                      {!collapsed && <span className="font-medium">{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* Stakeholders & Settings */}
+          <div className="mt-6">
+            {!collapsed && (
+              <div className="border-t border-gray-200 dark:border-gray-700 mb-2" />
+            )}
+            {collapsed && (
+              <div className="border-t border-gray-200 dark:border-gray-700 mb-2" />
+            )}
+            <div className="space-y-1">
               <Link
-                key={item.path}
-                to={item.path}
+                to="/stakeholders"
                 className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                  isActive
+                  location.pathname === '/stakeholders'
                     ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
-                title={collapsed ? item.label : undefined}
+                title={collapsed ? 'Stakeholders' : undefined}
               >
-                <Icon className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
-                {!collapsed && <span className="font-medium">{item.label}</span>}
+                <Users className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
+                {!collapsed && <span className="font-medium">Stakeholders</span>}
               </Link>
-            );
-          })}
+              <Link
+                to="/settings"
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                  location.pathname === '/settings'
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                }`}
+                title={collapsed ? 'Settings' : undefined}
+              >
+                <Settings className={`w-5 h-5 flex-shrink-0 ${collapsed ? 'mx-auto' : ''}`} />
+                {!collapsed && <span className="font-medium">Settings</span>}
+              </Link>
+            </div>
+          </div>
         </nav>
 
         <div className="p-4 border-t border-gray-200 dark:border-gray-800">
