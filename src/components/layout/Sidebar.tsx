@@ -48,20 +48,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-800">
           {!collapsed && (
-            <div className="flex items-center gap-2">
-              <div className="p-2 bg-blue-600 rounded-lg">
-                <Plane className="w-6 h-6 text-white" />
+            <Link to="/dashboard" className="flex items-center gap-2 group cursor-pointer">
+              <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg group-hover:shadow-cyan-500/50 transition-all">
+                <Network className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="font-bold text-lg text-gray-900 dark:text-white">AirFlow</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Workflow Manager</p>
+                <h1 className="font-bold text-lg bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                  AeroGraph
+                </h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Airline Intelligence</p>
               </div>
-            </div>
+            </Link>
           )}
           {collapsed && (
-            <div className="p-2 bg-blue-600 rounded-lg mx-auto">
-              <Plane className="w-6 h-6 text-white" />
-            </div>
+            <Link to="/dashboard" className="group cursor-pointer">
+              <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl shadow-lg group-hover:shadow-cyan-500/50 transition-all mx-auto">
+                <Network className="w-6 h-6 text-white" />
+              </div>
+            </Link>
           )}
         </div>
 

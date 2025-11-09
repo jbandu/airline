@@ -1,10 +1,10 @@
-# AirFlow - Airline Workflow Management Platform
+# AeroGraph - Airline Workflow Management Platform
 
-A sophisticated airline workflow management and agentic AI transformation opportunity tracking platform. AirFlow enables organizations to catalog, analyze, prioritize, and implement workflow automation opportunities across airline operations using AI agents.
+A sophisticated airline workflow management and agentic AI transformation opportunity tracking platform. AeroGraph enables organizations to catalog, analyze, prioritize, and implement workflow automation opportunities across airline operations using AI agents.
 
 ## Overview
 
-**AirFlow** empowers airline operations teams to systematically identify and implement AI-driven workflow transformations. The platform provides comprehensive tools for:
+**AeroGraph** empowers airline operations teams to systematically identify and implement AI-driven workflow transformations. The platform provides comprehensive tools for:
 
 - **Cataloging AI Opportunities** - Document and organize workflow automation opportunities across the organization
 - **Assessing Transformation Potential** - Score workflows on complexity, agentic potential, autonomy level, and implementation difficulty

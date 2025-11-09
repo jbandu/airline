@@ -106,11 +106,11 @@ export const Login: React.FC = () => {
             <div className="mb-12">
               <div className="flex items-center gap-4 mb-6">
                 <div className="p-3 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl shadow-lg shadow-cyan-500/50">
-                  <Plane className="w-12 h-12 text-white" />
+                  <Network className="w-12 h-12 text-white" />
                 </div>
                 <div>
                   <h1 className="text-5xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                    AirFlow
+                    AeroGraph
                   </h1>
                   <p className="text-cyan-300 text-sm font-medium tracking-wider">ENTERPRISE PLATFORM</p>
                 </div>
@@ -125,7 +125,7 @@ export const Login: React.FC = () => {
 
             {/* Key Benefits */}
             <div className="mb-12">
-              <h3 className="text-lg font-semibold text-cyan-400 mb-4">Why AirFlow?</h3>
+              <h3 className="text-lg font-semibold text-cyan-400 mb-4">Why AeroGraph?</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {benefits.map((benefit, index) => (
                   <div key={index} className="flex items-center gap-2">

@@ -1,8 +1,8 @@
-# AirFlow - Airline Operations Intelligence Platform
+# AeroGraph - Airline Operations Intelligence Platform
 
 ## Quick Context Summary
 
-### What is AirFlow?
+### What is AeroGraph?
 Enterprise platform for understanding, analyzing, and optimizing airline operations with AI-powered insights. Think of it as a "digital twin" of an airline's entire operational structure and knowledge network.
 
 ### Tech Stack
