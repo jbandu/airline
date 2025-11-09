@@ -20,6 +20,9 @@ import { Stakeholders } from './pages/Stakeholders';
 import { Settings } from './pages/Settings';
 import { DebugDashboard } from './pages/DebugDashboard';
 import { DataEntities } from './pages/DataEntities';
+import { DataFlows } from './pages/DataFlows';
+import { DataArchitectureLayers } from './pages/DataArchitectureLayers';
+import { DataLineage } from './pages/DataLineage';
 
 function App() {
   return (
@@ -184,6 +187,36 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <DataEntities />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/data/flows"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DataFlows />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/data/architecture"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DataArchitectureLayers />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/data/lineage"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DataLineage />
                   </Layout>
                 </ProtectedRoute>
               }
