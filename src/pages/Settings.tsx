@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
-import { User, Lock, Mail, Bell, Shield, LogOut, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { User, Lock, Mail, Bell, Shield, LogOut, Save, AlertCircle, CheckCircle, Camera, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabase';
 
 export const Settings: React.FC = () => {
   const { user, signOut } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Profile state
   const [profileData, setProfileData] = useState({
@@ -14,7 +16,21 @@ export const Settings: React.FC = () => {
     email: user?.email || '',
     phone: '',
     department: '',
+    photoUrl: '',
   });
+
+  useEffect(() => {
+    // Load user metadata on mount
+    if (user?.user_metadata) {
+      setProfileData(prev => ({
+        ...prev,
+        fullName: user.user_metadata.full_name || '',
+        phone: user.user_metadata.phone || '',
+        department: user.user_metadata.department || '',
+        photoUrl: user.user_metadata.photo_url || '',
+      }));
+    }
+  }, [user]);
 
   // Password state
   const [passwordData, setPasswordData] = useState({
@@ -102,6 +118,95 @@ export const Settings: React.FC = () => {
     }
   };
 
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || !event.target.files[0] || !user) return;
+
+    const file = event.target.files[0];
+
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Please upload an image file' });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setMessage({ type: 'error', text: 'Image must be less than 5MB' });
+      return;
+    }
+
+    try {
+      setUploadingPhoto(true);
+      setMessage(null);
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `profile-${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `profile-photos/${fileName}`;
+
+      // Upload to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('public')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true,
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('public')
+        .getPublicUrl(filePath);
+
+      // Update user metadata
+      const { error: updateError } = await supabase.auth.updateUser({
+        data: {
+          photo_url: publicUrl,
+          full_name: profileData.fullName,
+          phone: profileData.phone,
+          department: profileData.department,
+        }
+      });
+
+      if (updateError) throw updateError;
+
+      setProfileData(prev => ({ ...prev, photoUrl: publicUrl }));
+      setMessage({ type: 'success', text: 'Profile photo updated successfully!' });
+    } catch (error: any) {
+      console.error('Error uploading photo:', error);
+      setMessage({ type: 'error', text: error.message || 'Failed to upload photo' });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const handleRemovePhoto = async () => {
+    if (!user) return;
+
+    try {
+      setUploadingPhoto(true);
+      setMessage(null);
+
+      // Update user metadata to remove photo
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          photo_url: null,
+          full_name: profileData.fullName,
+          phone: profileData.phone,
+          department: profileData.department,
+        }
+      });
+
+      if (error) throw error;
+
+      setProfileData(prev => ({ ...prev, photoUrl: '' }));
+      setMessage({ type: 'success', text: 'Profile photo removed successfully!' });
+    } catch (error: any) {
+      console.error('Error removing photo:', error);
+      setMessage({ type: 'error', text: error.message || 'Failed to remove photo' });
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 relative overflow-hidden">
       {/* Animated background */}
@@ -143,9 +248,47 @@ export const Settings: React.FC = () => {
           {/* Sidebar - User Info */}
           <div className="lg:col-span-1 space-y-6">
             <div className="glass rounded-2xl p-8 text-center animate-fade-in">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-4xl font-bold mx-auto mb-4 shadow-lg shadow-cyan-500/50">
-                {user?.email?.[0].toUpperCase()}
+              <div className="relative inline-block mb-4">
+                {profileData.photoUrl ? (
+                  <img
+                    src={profileData.photoUrl}
+                    alt="Profile"
+                    className="w-24 h-24 rounded-full object-cover shadow-lg shadow-cyan-500/50"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-4xl font-bold shadow-lg shadow-cyan-500/50">
+                    {user?.email?.[0].toUpperCase()}
+                  </div>
+                )}
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+                <button
+                  onClick={() => photoInputRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-gradient-to-br from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-full flex items-center justify-center shadow-lg transition-all disabled:opacity-50"
+                  title="Upload photo"
+                >
+                  <Camera className="w-4 h-4 text-white" />
+                </button>
+                {profileData.photoUrl && (
+                  <button
+                    onClick={handleRemovePhoto}
+                    disabled={uploadingPhoto}
+                    className="absolute top-0 right-0 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center shadow-lg transition-all disabled:opacity-50"
+                    title="Remove photo"
+                  >
+                    <X className="w-3 h-3 text-white" />
+                  </button>
+                )}
               </div>
+              {uploadingPhoto && (
+                <p className="text-cyan-400 text-sm mb-2">Uploading...</p>
+              )}
               <h3 className="text-xl font-bold text-white mb-2">
                 {profileData.fullName || user?.email?.split('@')[0]}
               </h3>

@@ -159,12 +159,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
         <div className="p-4 border-t border-gray-200 dark:border-gray-800">
           {!collapsed && user && (
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
-                {user.email?.[0].toUpperCase()}
-              </div>
+              {user.user_metadata?.photo_url ? (
+                <img
+                  src={user.user_metadata.photo_url}
+                  alt="Profile"
+                  className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-500"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold">
+                  {user.email?.[0].toUpperCase()}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {user.email?.split('@')[0]}
+                  {user.user_metadata?.full_name || user.email?.split('@')[0]}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   {user.email}
@@ -173,9 +181,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggle }) => {
             </div>
           )}
           {collapsed && user && (
-            <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold mx-auto mb-3">
-              {user.email?.[0].toUpperCase()}
-            </div>
+            user.user_metadata?.photo_url ? (
+              <img
+                src={user.user_metadata.photo_url}
+                alt="Profile"
+                className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-500 mx-auto mb-3"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold mx-auto mb-3">
+                {user.email?.[0].toUpperCase()}
+              </div>
+            )
           )}
           <button
             onClick={onToggle}
