@@ -38,151 +38,73 @@ export const CrossDomainBridges: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Get workflows grouped by domains
-      const { data: workflowData, error: workflowError } = await supabase
-        .from('v_workflow_agent_assignments')
-        .select('workflow_id, workflow_name, domain, subdomain');
+      // Get cross-domain bridge data
+      const { data: bridgeData, error: bridgeError } = await supabase
+        .from('v_cross_domain_bridges')
+        .select('*')
+        .order('bridge_count', { ascending: false });
 
-      if (workflowError) throw workflowError;
+      if (bridgeError) {
+        console.error('Error loading bridges:', bridgeError);
+        throw bridgeError;
+      }
 
-      // Get cross-domain linkages if they exist
-      const { data: linkageData } = await supabase
-        .from('cross_domain_linkages')
-        .select(`
-          workflow_id,
-          linked_domain_id,
-          linkage_type,
-          linkage_strength
-        `);
+      if (!bridgeData || bridgeData.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-      // Get domain information
-      const { data: domains } = await supabase
-        .from('domains')
-        .select('id, name');
-
-      // Process data to create flows
-      const domainMap = new Map(domains?.map(d => [d.id, d.name]) || []);
+      // Process bridge data to create flows
       const flowMap = new Map<string, DomainFlow>();
-      const workflowMap = new Map<number, string>();
 
-      // Group workflows by domain
-      const domainWorkflows = new Map<string, Set<number>>();
-      workflowData?.forEach(w => {
-        if (!domainWorkflows.has(w.domain)) {
-          domainWorkflows.set(w.domain, new Set());
-        }
-        domainWorkflows.get(w.domain)?.add(w.workflow_id);
-        workflowMap.set(w.workflow_id, w.workflow_name);
+      // Create flows from bridge data
+      bridgeData.forEach(bridge => {
+        const sourceDomain = bridge.primary_domain;
+        const linkedDomains = bridge.linked_domains || [];
+
+        linkedDomains.forEach((targetDomain: string) => {
+          const flowKey = `${sourceDomain}->${targetDomain}`;
+          const reverseFlowKey = `${targetDomain}->${sourceDomain}`;
+
+          // Check if reverse flow already exists (to avoid duplicates)
+          if (!flowMap.has(reverseFlowKey)) {
+            if (flowMap.has(flowKey)) {
+              const existing = flowMap.get(flowKey)!;
+              existing.value++;
+              existing.workflows.push(bridge.workflow_name);
+            } else {
+              flowMap.set(flowKey, {
+                source: sourceDomain,
+                target: targetDomain,
+                value: 1,
+                workflows: [bridge.workflow_name]
+              });
+            }
+          }
+        });
       });
 
-      // Create flows between domains based on workflow relationships
-      // For now, we'll create sample flows based on domain categories
-      const sampleFlows: DomainFlow[] = [
-        {
-          source: 'Network Planning & Strategy',
-          target: 'Flight Operations',
-          value: 8,
-          workflows: ['Automated Flight Plan Generation', 'Real-time Flight Delay Prediction']
-        },
-        {
-          source: 'Network Planning & Strategy',
-          target: 'Commercial & Distribution',
-          value: 5,
-          workflows: ['Dynamic Pricing Engine']
-        },
-        {
-          source: 'Revenue Management',
-          target: 'Commercial & Distribution',
-          value: 6,
-          workflows: ['Multi-Horizon Demand Forecasting']
-        },
-        {
-          source: 'Flight Operations',
-          target: 'Ground Operations',
-          value: 7,
-          workflows: ['Automated Gate Assignment', 'Intelligent Baggage Routing']
-        },
-        {
-          source: 'Commercial & Distribution',
-          target: 'Customer Experience & Servicing',
-          value: 9,
-          workflows: ['Conversational Customer Service Bot']
-        },
-        {
-          source: 'Revenue Management',
-          target: 'MRO / Engineering',
-          value: 4,
-          workflows: ['Predictive Maintenance Anomaly Detection']
-        },
-        {
-          source: 'Crew Management',
-          target: 'Commercial & Distribution',
-          value: 3,
-          workflows: ['Intelligent Crew Pairing Optimization']
-        },
-        {
-          source: 'Ground Operations',
-          target: 'Customer Experience & Servicing',
-          value: 5,
-          workflows: ['Intelligent Baggage Routing']
-        },
-        {
-          source: 'Safety, Security & Compliance',
-          target: 'Flight Operations',
-          value: 4,
-          workflows: ['Safety Incident Pattern Analysis']
-        },
-        {
-          source: 'Cargo & Logistics',
-          target: 'Ground Operations',
-          value: 6,
-          workflows: ['AI Cargo Load Planning', 'IoT-Enabled Cargo Tracking']
-        }
-      ];
+      const flowsArray = Array.from(flowMap.values())
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 30); // Top 30 flows for performance
 
-      setFlows(sampleFlows);
+      setFlows(flowsArray);
 
-      // Create bridge workflow list
-      const bridges: BridgeWorkflow[] = [
-        {
-          id: 1,
-          name: 'Automated Flight Plan Generation',
-          primary_domain: 'Network Planning & Strategy',
-          linked_domains: ['Flight Operations', 'Revenue Management'],
-          linkage_count: 2,
-          avg_strength: 4.5
-        },
-        {
-          id: 5,
-          name: 'Dynamic Pricing Engine',
-          primary_domain: 'Customer Experience & Servicing',
-          linked_domains: ['Revenue Management', 'Commercial & Distribution'],
-          linkage_count: 2,
-          avg_strength: 5.0
-        },
-        {
-          id: 7,
-          name: 'Automated Gate Assignment',
-          primary_domain: 'Flight Operations',
-          linked_domains: ['Ground Operations', 'Network Planning & Strategy'],
-          linkage_count: 2,
-          avg_strength: 4.0
-        },
-        {
-          id: 3,
-          name: 'Intelligent Crew Pairing Optimization',
-          primary_domain: 'Commercial & Distribution',
-          linked_domains: ['Crew Management', 'Flight Operations', 'Revenue Management'],
-          linkage_count: 3,
-          avg_strength: 4.8
-        }
-      ];
+      // Create bridge workflow list from real data
+      const bridges: BridgeWorkflow[] = bridgeData.map(bridge => ({
+        id: bridge.workflow_id,
+        name: bridge.workflow_name,
+        primary_domain: bridge.primary_domain,
+        linked_domains: bridge.linked_domains || [],
+        linkage_count: bridge.bridge_count || 0,
+        avg_strength: Number(bridge.avg_linkage_strength) || 0
+      })).slice(0, 20); // Top 20 workflows
 
       setBridgeWorkflows(bridges);
 
       // Calculate domain stats
       const stats = new Map<string, DomainStats>();
-      sampleFlows.forEach(flow => {
+      flowsArray.forEach(flow => {
         if (!stats.has(flow.source)) {
           stats.set(flow.source, { name: flow.source, workflow_count: 0, bridge_count: 0 });
         }
@@ -191,6 +113,16 @@ export const CrossDomainBridges: React.FC = () => {
         }
         stats.get(flow.source)!.bridge_count++;
         stats.get(flow.target)!.bridge_count++;
+      });
+
+      // Add workflow counts from bridge data
+      bridgeData.forEach(bridge => {
+        const domain = bridge.primary_domain;
+        if (stats.has(domain)) {
+          stats.get(domain)!.workflow_count++;
+        } else {
+          stats.set(domain, { name: domain, workflow_count: 1, bridge_count: 0 });
+        }
       });
 
       setDomainStats(Array.from(stats.values()).sort((a, b) => b.bridge_count - a.bridge_count));
