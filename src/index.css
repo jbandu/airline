@@ -148,3 +148,128 @@
 .animation-delay-4000 {
   animation-delay: 4s;
 }
+
+/* ============================================
+   UI THEME PROFILES
+   ============================================ */
+
+/* Palantir Dark Theme (Default) - Sophisticated dark theme with glass-morphism */
+:root.theme-palantir-dark {
+  /* Backgrounds */
+  --theme-bg-primary: linear-gradient(to bottom right, rgb(2, 6, 23), rgb(30, 58, 138), rgb(2, 6, 23));
+  --theme-bg-secondary: rgba(255, 255, 255, 0.05);
+  --theme-bg-tertiary: rgba(255, 255, 255, 0.1);
+  --theme-bg-card: rgba(255, 255, 255, 0.05);
+  --theme-bg-hover: rgba(255, 255, 255, 0.1);
+
+  /* Borders */
+  --theme-border-primary: rgba(255, 255, 255, 0.1);
+  --theme-border-secondary: rgba(255, 255, 255, 0.2);
+  --theme-border-accent: rgba(6, 182, 212, 0.3);
+
+  /* Text */
+  --theme-text-primary: rgb(255, 255, 255);
+  --theme-text-secondary: rgb(156, 163, 175);
+  --theme-text-tertiary: rgb(107, 114, 128);
+  --theme-text-accent: rgb(34, 211, 238);
+
+  /* Accents */
+  --theme-accent-primary: rgb(6, 182, 212);
+  --theme-accent-secondary: rgb(59, 130, 246);
+  --theme-accent-gradient: linear-gradient(to right, rgb(6, 182, 212), rgb(59, 130, 246));
+
+  /* Shadows */
+  --theme-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --theme-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --theme-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  --theme-shadow-glow: 0 0 20px rgba(6, 182, 212, 0.3);
+
+  /* Effects */
+  --theme-backdrop-blur: blur(16px);
+  --theme-glass-opacity: 0.1;
+}
+
+/* Classic Light Theme - Clean, professional light theme */
+:root.theme-classic-light {
+  /* Backgrounds */
+  --theme-bg-primary: linear-gradient(to bottom right, rgb(249, 250, 251), rgb(243, 244, 246), rgb(249, 250, 251));
+  --theme-bg-secondary: rgb(255, 255, 255);
+  --theme-bg-tertiary: rgb(249, 250, 251);
+  --theme-bg-card: rgb(255, 255, 255);
+  --theme-bg-hover: rgb(249, 250, 251);
+
+  /* Borders */
+  --theme-border-primary: rgb(229, 231, 235);
+  --theme-border-secondary: rgb(209, 213, 219);
+  --theme-border-accent: rgb(59, 130, 246);
+
+  /* Text */
+  --theme-text-primary: rgb(17, 24, 39);
+  --theme-text-secondary: rgb(75, 85, 99);
+  --theme-text-tertiary: rgb(156, 163, 175);
+  --theme-text-accent: rgb(37, 99, 235);
+
+  /* Accents */
+  --theme-accent-primary: rgb(59, 130, 246);
+  --theme-accent-secondary: rgb(99, 102, 241);
+  --theme-accent-gradient: linear-gradient(to right, rgb(59, 130, 246), rgb(99, 102, 241));
+
+  /* Shadows */
+  --theme-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --theme-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --theme-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --theme-shadow-glow: 0 0 20px rgba(59, 130, 246, 0.2);
+
+  /* Effects */
+  --theme-backdrop-blur: blur(0px);
+  --theme-glass-opacity: 1;
+}
+
+/* Theme-aware utility classes */
+.theme-bg-primary {
+  background: var(--theme-bg-primary);
+}
+
+.theme-bg-secondary {
+  background: var(--theme-bg-secondary);
+}
+
+.theme-bg-card {
+  background: var(--theme-bg-card);
+  border: 1px solid var(--theme-border-primary);
+}
+
+.theme-bg-card-hover:hover {
+  background: var(--theme-bg-hover);
+}
+
+.theme-text-primary {
+  color: var(--theme-text-primary);
+}
+
+.theme-text-secondary {
+  color: var(--theme-text-secondary);
+}
+
+.theme-text-accent {
+  color: var(--theme-text-accent);
+}
+
+.theme-border {
+  border-color: var(--theme-border-primary);
+}
+
+.theme-shadow {
+  box-shadow: var(--theme-shadow-md);
+}
+
+.theme-shadow-glow {
+  box-shadow: var(--theme-shadow-glow);
+}
+
+/* Glass effect that adapts to theme */
+.theme-glass {
+  background: var(--theme-bg-secondary);
+  backdrop-filter: var(--theme-backdrop-blur);
+  border: 1px solid var(--theme-border-primary);
+}

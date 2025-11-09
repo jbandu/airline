@@ -1,10 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Lock, Mail, Bell, Shield, LogOut, Save, AlertCircle, CheckCircle, Camera, X } from 'lucide-react';
+import { User, Lock, Mail, Bell, Shield, LogOut, Save, AlertCircle, CheckCircle, Camera, X, Palette, Sparkles } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useUITheme } from '../contexts/UIThemeContext';
 import { supabase } from '../lib/supabase';
 
 export const Settings: React.FC = () => {
   const { user, signOut } = useAuth();
+  const { uiTheme, setUITheme, loading: themeLoading } = useUITheme();
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -204,6 +206,16 @@ export const Settings: React.FC = () => {
       setMessage({ type: 'error', text: error.message || 'Failed to remove photo' });
     } finally {
       setUploadingPhoto(false);
+    }
+  };
+
+  const handleThemeChange = async (newTheme: 'palantir-dark' | 'classic-light') => {
+    try {
+      setMessage(null);
+      await setUITheme(newTheme);
+      setMessage({ type: 'success', text: `Switched to ${newTheme === 'palantir-dark' ? 'Palantir Dark' : 'Classic Light'} theme!` });
+    } catch (error: any) {
+      setMessage({ type: 'error', text: error.message || 'Failed to change theme' });
     }
   };
 
@@ -484,6 +496,131 @@ export const Settings: React.FC = () => {
                   </div>
                 </div>
               </form>
+            </div>
+
+            {/* UI Theme Profiles */}
+            <div className="glass rounded-2xl p-8 animate-fade-in animation-delay-700">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 rounded-xl bg-gradient-to-br from-cyan-500/20 to-purple-500/20">
+                  <Palette className="w-6 h-6 text-cyan-400" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">UI Theme Profile</h2>
+                  <p className="text-sm text-gray-400">Choose your preferred interface style</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Palantir Dark */}
+                <button
+                  onClick={() => handleThemeChange('palantir-dark')}
+                  disabled={themeLoading}
+                  className={`relative p-6 rounded-2xl border-2 transition-all text-left ${
+                    uiTheme === 'palantir-dark'
+                      ? 'border-cyan-500 bg-cyan-500/10'
+                      : 'border-white/10 bg-white/5 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="absolute top-4 right-4">
+                    {uiTheme === 'palantir-dark' && (
+                      <div className="w-6 h-6 bg-cyan-500 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-3">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">Palantir Dark</h3>
+                    <p className="text-sm text-gray-400 mb-3">
+                      Sophisticated dark theme with glass-morphism effects, gradient backgrounds, and cyan accents
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 rounded-xl p-4 border border-white/10">
+                    <div className="space-y-2">
+                      <div className="h-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded w-3/4"></div>
+                      <div className="h-2 bg-white/10 rounded w-full"></div>
+                      <div className="h-2 bg-white/10 rounded w-5/6"></div>
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        <div className="h-8 bg-white/5 rounded border border-white/10"></div>
+                        <div className="h-8 bg-cyan-500/20 rounded border border-cyan-500/30"></div>
+                        <div className="h-8 bg-white/5 rounded border border-white/10"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="px-2 py-1 bg-cyan-500/20 text-cyan-400 rounded text-xs">Glass Effects</span>
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">Gradients</span>
+                    <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded text-xs">Animations</span>
+                  </div>
+                </button>
+
+                {/* Classic Light */}
+                <button
+                  onClick={() => handleThemeChange('classic-light')}
+                  disabled={themeLoading}
+                  className={`relative p-6 rounded-2xl border-2 transition-all text-left ${
+                    uiTheme === 'classic-light'
+                      ? 'border-blue-500 bg-blue-500/10'
+                      : 'border-white/10 bg-white/5 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="absolute top-4 right-4">
+                    {uiTheme === 'classic-light' && (
+                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-3">
+                      <Sparkles className="w-6 h-6 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">Classic Light</h3>
+                    <p className="text-sm text-gray-400 mb-3">
+                      Clean, professional light theme with subtle shadows, card-based layouts, and traditional styling
+                    </p>
+                  </div>
+
+                  <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200">
+                    <div className="space-y-2">
+                      <div className="h-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded w-3/4"></div>
+                      <div className="h-2 bg-gray-200 rounded w-full"></div>
+                      <div className="h-2 bg-gray-200 rounded w-5/6"></div>
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        <div className="h-8 bg-white rounded border border-gray-200 shadow-sm"></div>
+                        <div className="h-8 bg-blue-50 rounded border border-blue-200 shadow-sm"></div>
+                        <div className="h-8 bg-white rounded border border-gray-200 shadow-sm"></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs">Clean Design</span>
+                    <span className="px-2 py-1 bg-gray-500/20 text-gray-400 rounded text-xs">Card Layout</span>
+                    <span className="px-2 py-1 bg-indigo-500/20 text-indigo-400 rounded text-xs">Professional</span>
+                  </div>
+                </button>
+              </div>
+
+              <div className="mt-6 bg-cyan-500/10 border border-cyan-500/20 rounded-xl p-4">
+                <div className="flex gap-3">
+                  <Sparkles className="w-5 h-5 text-cyan-400 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-cyan-300">
+                    <p className="font-medium mb-1">Theme Features:</p>
+                    <ul className="list-disc list-inside space-y-1 text-cyan-400">
+                      <li>Themes apply across all pages instantly</li>
+                      <li>Your preference is saved to your profile</li>
+                      <li>Switch anytime to match your workflow</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Notification Preferences */}
