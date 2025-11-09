@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Folder, FileText, Bot, Network, GitBranch, Grid3x3, Users, Settings, ChevronLeft, ChevronRight, Plane, TreeDeciduous } from 'lucide-react';
+import { Home, Folder, FileText, Bot, Network, GitBranch, Grid3x3, Users, Settings, ChevronLeft, ChevronRight, Plane, TreeDeciduous, Database, Workflow, HardDrive, Cable } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 interface SidebarProps {
@@ -31,6 +31,15 @@ const menuSections = [
       { icon: TreeDeciduous, label: 'Ontology Tree', path: '/ontology' },
       { icon: GitBranch, label: 'Cross-Domain Bridges', path: '/bridges' },
       { icon: Grid3x3, label: 'Semantic Matrix', path: '/semantic-matrix' },
+    ]
+  },
+  {
+    title: 'DATA ARCHITECTURE',
+    items: [
+      { icon: Database, label: 'Data Entities', path: '/data/entities' },
+      { icon: Workflow, label: 'Data Flows', path: '/data/flows' },
+      { icon: HardDrive, label: 'Architecture Layers', path: '/data/architecture' },
+      { icon: Cable, label: 'Data Lineage', path: '/data/lineage' },
     ]
   },
 ];

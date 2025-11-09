@@ -19,6 +19,7 @@ import { SemanticMatrixPage } from './pages/SemanticMatrixPage';
 import { Stakeholders } from './pages/Stakeholders';
 import { Settings } from './pages/Settings';
 import { DebugDashboard } from './pages/DebugDashboard';
+import { DataEntities } from './pages/DataEntities';
 
 function App() {
   return (
@@ -173,6 +174,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <DebugDashboard />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/data/entities"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DataEntities />
                   </Layout>
                 </ProtectedRoute>
               }
