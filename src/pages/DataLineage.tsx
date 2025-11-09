@@ -1,7 +1,218 @@
-import React from 'react';
-import { Cable, GitBranch, Construction, Share2, Activity } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Cable, Database, Workflow, Zap, Server, GitBranch, TrendingUp, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { DataLineageGraph, LineageNode, LineageLink } from '../components/visualizations/DataLineageGraph';
+
+interface DataEntity {
+  id: number;
+  code: string;
+  name: string;
+  icon: string;
+}
+
+interface LineageStats {
+  upstreamSources: number;
+  downstreamWorkflows: number;
+  downstreamAgents: number;
+  totalConsumers: number;
+}
 
 export const DataLineage: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [entities, setEntities] = useState<DataEntity[]>([]);
+  const [selectedEntity, setSelectedEntity] = useState<DataEntity | null>(null);
+  const [lineageNodes, setLineageNodes] = useState<LineageNode[]>([]);
+  const [lineageLinks, setLineageLinks] = useState<LineageLink[]>([]);
+  const [stats, setStats] = useState<LineageStats>({
+    upstreamSources: 0,
+    downstreamWorkflows: 0,
+    downstreamAgents: 0,
+    totalConsumers: 0
+  });
+
+  useEffect(() => {
+    loadEntities();
+  }, []);
+
+  useEffect(() => {
+    if (selectedEntity) {
+      loadLineage(selectedEntity);
+    }
+  }, [selectedEntity]);
+
+  const loadEntities = async () => {
+    try {
+      setLoading(true);
+      const { data } = await supabase
+        .from('data_entities')
+        .select('id, code, name, icon')
+        .order('name');
+
+      setEntities(data || []);
+
+      // Auto-select first entity
+      if (data && data.length > 0) {
+        setSelectedEntity(data[0]);
+      }
+    } catch (error) {
+      console.error('Error loading entities:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadLineage = async (entity: DataEntity) => {
+    try {
+      // Get workflows that consume this entity
+      const { data: workflowMappings } = await supabase
+        .from('workflow_data_mappings')
+        .select(`
+          workflow_id,
+          workflows:workflow_id(id, name)
+        `)
+        .eq('data_entity_id', entity.id);
+
+      // Get agents that consume this entity
+      const { data: agentMappings } = await supabase
+        .from('agent_data_mappings')
+        .select(`
+          agent_id,
+          agents:agent_id(id, name)
+        `)
+        .eq('data_entity_id', entity.id);
+
+      // Build graph nodes
+      const nodes: LineageNode[] = [];
+      const links: LineageLink[] = [];
+
+      // Add source system node (simplified)
+      const sourceNode: LineageNode = {
+        id: 'source-1',
+        name: getSourceSystemName(entity.code),
+        type: 'source',
+        icon: '🏢'
+      };
+      nodes.push(sourceNode);
+
+      // Add the selected data entity node
+      const entityNode: LineageNode = {
+        id: `entity-${entity.id}`,
+        name: entity.name,
+        type: 'entity',
+        icon: entity.icon,
+        metadata: {
+          code: entity.code
+        }
+      };
+      nodes.push(entityNode);
+
+      // Link source to entity
+      links.push({
+        source: sourceNode.id,
+        target: entityNode.id
+      });
+
+      // Add workflow nodes
+      let workflowCount = 0;
+      if (workflowMappings) {
+        workflowMappings.forEach((mapping: any, index: number) => {
+          if (mapping.workflows) {
+            const workflowNode: LineageNode = {
+              id: `workflow-${mapping.workflow_id}`,
+              name: mapping.workflows.name,
+              type: 'workflow',
+              icon: '⚙️'
+            };
+            nodes.push(workflowNode);
+            links.push({
+              source: entityNode.id,
+              target: workflowNode.id
+            });
+            workflowCount++;
+          }
+        });
+      }
+
+      // Add agent nodes
+      let agentCount = 0;
+      if (agentMappings) {
+        agentMappings.forEach((mapping: any, index: number) => {
+          if (mapping.agents) {
+            const agentNode: LineageNode = {
+              id: `agent-${mapping.agent_id}`,
+              name: mapping.agents.name,
+              type: 'agent',
+              icon: '🤖'
+            };
+            nodes.push(agentNode);
+            links.push({
+              source: entityNode.id,
+              target: agentNode.id
+            });
+            agentCount++;
+          }
+        });
+      }
+
+      setLineageNodes(nodes);
+      setLineageLinks(links);
+
+      setStats({
+        upstreamSources: 1,
+        downstreamWorkflows: workflowCount,
+        downstreamAgents: agentCount,
+        totalConsumers: workflowCount + agentCount
+      });
+
+    } catch (error) {
+      console.error('Error loading lineage:', error);
+    }
+  };
+
+  const getSourceSystemName = (entityCode: string): string => {
+    const sourceMap: Record<string, string> = {
+      'PNR': 'Amadeus PSS',
+      'E_TKT': 'Ticketing System',
+      'FLIFO': 'Flight Ops System',
+      'INVENTORY': 'Revenue Management',
+      'BAGGAGE': 'Baggage Reconciliation',
+      'LOYALTY': 'Loyalty Platform',
+      'SSM': 'Schedule Planning',
+      'MCT': 'Connection System'
+    };
+    return sourceMap[entityCode] || 'Source System';
+  };
+
+  const getImpactLevel = (consumers: number): { level: string; color: string; description: string } => {
+    if (consumers >= 20) {
+      return {
+        level: 'CRITICAL',
+        color: 'text-red-400',
+        description: 'Very high impact - many downstream dependencies'
+      };
+    } else if (consumers >= 10) {
+      return {
+        level: 'HIGH',
+        color: 'text-orange-400',
+        description: 'High impact - significant downstream usage'
+      };
+    } else if (consumers >= 5) {
+      return {
+        level: 'MEDIUM',
+        color: 'text-yellow-400',
+        description: 'Medium impact - moderate dependencies'
+      };
+    } else {
+      return {
+        level: 'LOW',
+        color: 'text-green-400',
+        description: 'Low impact - few dependencies'
+      };
+    }
+  };
+
+  const impact = getImpactLevel(stats.totalConsumers);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 p-6">
       {/* Header */}
@@ -15,96 +226,189 @@ export const DataLineage: React.FC = () => {
               Data Lineage
             </h1>
             <p className="text-gray-400 text-sm mt-1">
-              Trace data from source to consumption
+              Trace data from source to consumption - understand dependencies and impact
             </p>
           </div>
         </div>
       </div>
 
-      {/* Coming Soon Card */}
-      <div className="max-w-4xl mx-auto mt-20">
-        <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-12 text-center">
-          <div className="w-24 h-24 bg-gradient-to-br from-amber-500 to-orange-600 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Construction className="w-12 h-12 text-white" />
-          </div>
-
-          <h2 className="text-3xl font-bold text-white mb-4">Coming Soon</h2>
-          <p className="text-gray-300 text-lg mb-8 max-w-2xl mx-auto">
-            Data Lineage visualization will show network graphs tracing how data flows from source systems through domains, workflows, and agents.
-          </p>
-
-          {/* Preview Features */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <Share2 className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
-              <h3 className="text-white font-semibold mb-1">Source Tracking</h3>
-              <p className="text-gray-400 text-sm">See where each data point originates</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <GitBranch className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-              <h3 className="text-white font-semibold mb-1">Transformation Path</h3>
-              <p className="text-gray-400 text-sm">Follow transformations at each step</p>
-            </div>
-            <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-              <Activity className="w-8 h-8 text-green-400 mx-auto mb-2" />
-              <h3 className="text-white font-semibold mb-1">Impact Analysis</h3>
-              <p className="text-gray-400 text-sm">Understand downstream dependencies</p>
-            </div>
-          </div>
-
-          {/* Example Lineage */}
-          <div className="bg-slate-900 border border-white/10 rounded-xl p-6">
-            <h3 className="text-white font-semibold mb-4">Example Lineage: PNR Data</h3>
-            <div className="space-y-4">
-              {/* Source */}
-              <div className="flex items-center justify-center gap-4">
-                <div className="flex-1 text-right">
-                  <span className="px-4 py-2 bg-red-900/30 text-red-300 rounded-lg inline-block">Amadeus PSS</span>
-                  <p className="text-xs text-gray-500 mt-1">Source System</p>
-                </div>
-              </div>
-
-              {/* Arrow Down */}
-              <div className="flex justify-center">
-                <div className="w-1 h-8 bg-gradient-to-b from-red-500 to-blue-500"></div>
-              </div>
-
-              {/* Data Entity */}
-              <div className="flex items-center justify-center gap-4">
-                <div className="flex-1 text-center">
-                  <span className="px-4 py-2 bg-blue-900/30 text-blue-300 rounded-lg inline-block">📋 PNR Entity</span>
-                  <p className="text-xs text-gray-500 mt-1">Data Lake</p>
-                </div>
-              </div>
-
-              {/* Splits to multiple consumers */}
-              <div className="flex justify-center">
-                <div className="flex gap-8">
-                  <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-purple-500"></div>
-                  <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-green-500"></div>
-                  <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-orange-500"></div>
-                </div>
-              </div>
-
-              {/* Consumers */}
-              <div className="flex items-start justify-center gap-4">
-                <div className="flex-1">
-                  <span className="px-3 py-2 bg-purple-900/30 text-purple-300 rounded-lg inline-block text-sm">Check-in Workflow</span>
-                  <p className="text-xs text-gray-500 mt-1">Consumes</p>
-                </div>
-                <div className="flex-1">
-                  <span className="px-3 py-2 bg-green-900/30 text-green-300 rounded-lg inline-block text-sm">Rebooking Agent</span>
-                  <p className="text-xs text-gray-500 mt-1">Consumes</p>
-                </div>
-                <div className="flex-1">
-                  <span className="px-3 py-2 bg-orange-900/30 text-orange-300 rounded-lg inline-block text-sm">Customer Service</span>
-                  <p className="text-xs text-gray-500 mt-1">Consumes</p>
-                </div>
-              </div>
-            </div>
-          </div>
+      {loading ? (
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500"></div>
         </div>
-      </div>
+      ) : (
+        <div className="max-w-7xl mx-auto">
+          {/* Entity Selector */}
+          <div className="mb-6">
+            <label className="block text-sm font-semibold text-white mb-2 flex items-center gap-2">
+              <Database className="w-5 h-5 text-cyan-400" />
+              Select Data Entity to Trace
+            </label>
+            <select
+              value={selectedEntity?.id || ''}
+              onChange={(e) => {
+                const entity = entities.find(en => en.id === parseInt(e.target.value));
+                setSelectedEntity(entity || null);
+              }}
+              className="w-full md:w-96 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+            >
+              {entities.map((entity) => (
+                <option key={entity.id} value={entity.id} className="bg-slate-900">
+                  {entity.icon} {entity.name} ({entity.code})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {selectedEntity && (
+            <>
+              {/* Stats Dashboard */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Server className="w-5 h-5 text-red-400" />
+                    <span className="text-sm font-semibold text-white">Upstream Sources</span>
+                  </div>
+                  <p className="text-3xl font-bold text-white">{stats.upstreamSources}</p>
+                  <p className="text-xs text-gray-400 mt-1">Source systems</p>
+                </div>
+
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Workflow className="w-5 h-5 text-purple-400" />
+                    <span className="text-sm font-semibold text-white">Workflows</span>
+                  </div>
+                  <p className="text-3xl font-bold text-white">{stats.downstreamWorkflows}</p>
+                  <p className="text-xs text-gray-400 mt-1">Consuming workflows</p>
+                </div>
+
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Zap className="w-5 h-5 text-green-400" />
+                    <span className="text-sm font-semibold text-white">AI Agents</span>
+                  </div>
+                  <p className="text-3xl font-bold text-white">{stats.downstreamAgents}</p>
+                  <p className="text-xs text-gray-400 mt-1">Consuming agents</p>
+                </div>
+
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="w-5 h-5 text-orange-400" />
+                    <span className="text-sm font-semibold text-white">Impact Level</span>
+                  </div>
+                  <p className={`text-2xl font-bold ${impact.color}`}>{impact.level}</p>
+                  <p className="text-xs text-gray-400 mt-1">{stats.totalConsumers} total consumers</p>
+                </div>
+              </div>
+
+              {/* Lineage Graph */}
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 mb-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <GitBranch className="w-6 h-6 text-cyan-400" />
+                    Data Flow Network
+                  </h3>
+                  <div className="text-sm text-gray-400">
+                    Drag nodes to rearrange • Scroll to zoom
+                  </div>
+                </div>
+
+                {lineageNodes.length > 0 ? (
+                  <div className="bg-slate-900/50 rounded-xl border border-white/10">
+                    <DataLineageGraph
+                      nodes={lineageNodes}
+                      links={lineageLinks}
+                      height={600}
+                    />
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-gray-400">
+                    No lineage data available for this entity
+                  </div>
+                )}
+              </div>
+
+              {/* Legend */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full bg-red-500"></div>
+                    <span className="text-sm font-semibold text-white">Source Systems</span>
+                  </div>
+                  <p className="text-xs text-gray-400">Legacy airline systems producing data</p>
+                </div>
+
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full bg-blue-500"></div>
+                    <span className="text-sm font-semibold text-white">Data Entities</span>
+                  </div>
+                  <p className="text-xs text-gray-400">Operational data in ODS/Lake</p>
+                </div>
+
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full bg-purple-500"></div>
+                    <span className="text-sm font-semibold text-white">Workflows</span>
+                  </div>
+                  <p className="text-xs text-gray-400">Business processes consuming data</p>
+                </div>
+
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 rounded-full bg-green-500"></div>
+                    <span className="text-sm font-semibold text-white">AI Agents</span>
+                  </div>
+                  <p className="text-xs text-gray-400">Intelligent agents using data</p>
+                </div>
+              </div>
+
+              {/* Impact Analysis */}
+              <div className="bg-gradient-to-r from-orange-900/20 to-red-900/20 border border-orange-500/30 rounded-2xl p-6">
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                  <TrendingUp className="w-6 h-6 text-orange-400" />
+                  Impact Analysis
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className={`w-5 h-5 ${impact.color} mt-0.5`} />
+                    <div>
+                      <p className="text-white font-semibold mb-1">
+                        Impact Level: <span className={impact.color}>{impact.level}</span>
+                      </p>
+                      <p className="text-gray-300 text-sm">{impact.description}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3">
+                    <GitBranch className="w-5 h-5 text-cyan-400 mt-0.5" />
+                    <div>
+                      <p className="text-white font-semibold mb-1">Dependency Chain</p>
+                      <p className="text-gray-300 text-sm">
+                        {getSourceSystemName(selectedEntity.code)} → {selectedEntity.name} → {stats.totalConsumers} downstream consumer{stats.totalConsumers !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  {stats.totalConsumers > 0 && (
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5" />
+                      <div>
+                        <p className="text-white font-semibold mb-1">Change Considerations</p>
+                        <p className="text-gray-300 text-sm">
+                          Changes to {selectedEntity.name} will affect {stats.downstreamWorkflows} workflow{stats.downstreamWorkflows !== 1 ? 's' : ''}
+                          {stats.downstreamAgents > 0 && ` and ${stats.downstreamAgents} agent${stats.downstreamAgents !== 1 ? 's' : ''}`}.
+                          Coordinate with downstream consumers before making schema or availability changes.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
