@@ -12,7 +12,13 @@
     "docs:dev": "vitepress dev",
     "docs:build": "vitepress build",
     "docs:preview": "vitepress preview",
-    "migrate:workflows": "tsx scripts/migrate-workflows-to-subdomains.ts"
+    "migrate:workflows": "tsx scripts/migrate-workflows-to-subdomains.ts",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:debug": "playwright test --debug",
+    "test:codegen": "playwright codegen http://localhost:5173",
+    "test:report": "playwright show-report"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
@@ -33,6 +39,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^24.10.0",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
