@@ -309,9 +309,15 @@ export const Domains: React.FC = () => {
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     {domain.icon_url ? (
-                      <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg">
-                        <img src={domain.icon_url} alt={domain.name} className="w-full h-full object-cover" />
-                      </div>
+                      domain.icon_url.startsWith('http') ? (
+                        <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg">
+                          <img src={domain.icon_url} alt={domain.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg text-2xl">
+                          {domain.icon_url}
+                        </div>
+                      )
                     ) : (
                       <div className={`w-12 h-12 bg-gradient-to-br ${getDomainColor(index)} rounded-xl flex items-center justify-center shadow-lg`}>
                         <Folder className="w-6 h-6 text-white" />
@@ -364,20 +370,35 @@ export const Domains: React.FC = () => {
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-3">Domain Icon</label>
                 <div className="flex items-center gap-4">
                   {selectedDomain.icon_url ? (
-                    <div className="relative group">
-                      <img
-                        src={selectedDomain.icon_url}
-                        alt={selectedDomain.name}
-                        className="w-20 h-20 rounded-xl object-cover shadow-lg"
-                      />
-                      <button
-                        onClick={handleRemoveIcon}
-                        disabled={uploading}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
+                    selectedDomain.icon_url.startsWith('http') ? (
+                      <div className="relative group">
+                        <img
+                          src={selectedDomain.icon_url}
+                          alt={selectedDomain.name}
+                          className="w-20 h-20 rounded-xl object-cover shadow-lg"
+                        />
+                        <button
+                          onClick={handleRemoveIcon}
+                          disabled={uploading}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative group">
+                        <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg text-4xl">
+                          {selectedDomain.icon_url}
+                        </div>
+                        <button
+                          onClick={handleRemoveIcon}
+                          disabled={uploading}
+                          className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )
                   ) : (
                     <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
                       <Folder className="w-10 h-10 text-gray-400" />
