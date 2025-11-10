@@ -69,26 +69,14 @@ export const Domains: React.FC = () => {
 
               workflowCount = count || 0;
             }
-          });
-        }
 
-        const domainsWithStats: DomainWithStats[] = domainsResult.data.map((domain) => {
-          const domainSubdomains = subdomainsResult.data.filter(
-            (sd) => sd.domain_id === domain.id
-          );
-          const subdomainCount = domainSubdomains.length;
-
-          let workflowCount = 0;
-          domainSubdomains.forEach((subdomain) => {
-            workflowCount += workflowCountBySubdomain.get(subdomain.id) || 0;
-          });
-
-          return {
-            ...domain,
-            subdomainCount,
-            workflowCount,
-          };
-        });
+            return {
+              ...domain,
+              subdomainCount,
+              workflowCount,
+            };
+          })
+        );
 
         setDomains(domainsWithStats);
       }
