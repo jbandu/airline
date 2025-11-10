@@ -57,75 +57,49 @@ export const CrossDomainBridges: React.FC = () => {
       // Process bridge data to create flows
       const flowMap = new Map<string, DomainFlow>();
 
-      // Create flows from bridge data
-      bridgeData.forEach(bridge => {
-        const sourceDomain = bridge.primary_domain;
-        const linkedDomains = bridge.linked_domains || [];
+      // Process linkages if they exist
+      if (linkageData && linkageData.length > 0) {
+        // Build flows from linkage data
+        const flowsFromLinkages: DomainFlow[] = [];
+        const bridgesFromLinkages: BridgeWorkflow[] = [];
 
-        linkedDomains.forEach((targetDomain: string) => {
-          const flowKey = `${sourceDomain}->${targetDomain}`;
-          const reverseFlowKey = `${targetDomain}->${sourceDomain}`;
+        // Group linkages by workflow
+        const workflowLinkages = new Map<number, typeof linkageData>();
+        linkageData.forEach(link => {
+          if (!workflowLinkages.has(link.workflow_id)) {
+            workflowLinkages.set(link.workflow_id, []);
+          }
+          workflowLinkages.get(link.workflow_id)?.push(link);
+        });
 
-          // Check if reverse flow already exists (to avoid duplicates)
-          if (!flowMap.has(reverseFlowKey)) {
-            if (flowMap.has(flowKey)) {
-              const existing = flowMap.get(flowKey)!;
-              existing.value++;
-              existing.workflows.push(bridge.workflow_name);
-            } else {
-              flowMap.set(flowKey, {
-                source: sourceDomain,
-                target: targetDomain,
-                value: 1,
-                workflows: [bridge.workflow_name]
-              });
-            }
+        // Create bridge workflows
+        workflowLinkages.forEach((links, workflowId) => {
+          const workflowName = workflowMap.get(workflowId) || `Workflow ${workflowId}`;
+          const linkedDomainIds = links.map(l => l.linked_domain_id);
+          const linkedDomainNames = linkedDomainIds.map(id => domainMap.get(id) || '').filter(Boolean);
+          const avgStrength = links.reduce((sum, l) => sum + (l.linkage_strength || 0), 0) / links.length;
+
+          if (linkedDomainNames.length > 0) {
+            bridgesFromLinkages.push({
+              id: workflowId,
+              name: workflowName,
+              primary_domain: linkedDomainNames[0],
+              linked_domains: linkedDomainNames,
+              linkage_count: links.length,
+              avg_strength: avgStrength,
+            });
           }
         });
-      });
 
-      const flowsArray = Array.from(flowMap.values())
-        .sort((a, b) => b.value - a.value)
-        .slice(0, 30); // Top 30 flows for performance
-
-      setFlows(flowsArray);
-
-      // Create bridge workflow list from real data
-      const bridges: BridgeWorkflow[] = bridgeData.map(bridge => ({
-        id: bridge.workflow_id,
-        name: bridge.workflow_name,
-        primary_domain: bridge.primary_domain,
-        linked_domains: bridge.linked_domains || [],
-        linkage_count: bridge.bridge_count || 0,
-        avg_strength: Number(bridge.avg_linkage_strength) || 0
-      })).slice(0, 20); // Top 20 workflows
-
-      setBridgeWorkflows(bridges);
-
-      // Calculate domain stats
-      const stats = new Map<string, DomainStats>();
-      flowsArray.forEach(flow => {
-        if (!stats.has(flow.source)) {
-          stats.set(flow.source, { name: flow.source, workflow_count: 0, bridge_count: 0 });
-        }
-        if (!stats.has(flow.target)) {
-          stats.set(flow.target, { name: flow.target, workflow_count: 0, bridge_count: 0 });
-        }
-        stats.get(flow.source)!.bridge_count++;
-        stats.get(flow.target)!.bridge_count++;
-      });
-
-      // Add workflow counts from bridge data
-      bridgeData.forEach(bridge => {
-        const domain = bridge.primary_domain;
-        if (stats.has(domain)) {
-          stats.get(domain)!.workflow_count++;
-        } else {
-          stats.set(domain, { name: domain, workflow_count: 1, bridge_count: 0 });
-        }
-      });
-
-      setDomainStats(Array.from(stats.values()).sort((a, b) => b.bridge_count - a.bridge_count));
+        setBridgeWorkflows(bridgesFromLinkages);
+        setFlows(flowsFromLinkages);
+        setDomainStats([]);
+      } else {
+        // No linkage data available
+        setFlows([]);
+        setBridgeWorkflows([]);
+        setDomainStats([]);
+      }
 
     } catch (error) {
       console.error('Error loading cross-domain data:', error);
@@ -148,6 +122,8 @@ export const CrossDomainBridges: React.FC = () => {
     );
   }
 
+  const hasData = flows.length > 0 || bridgeWorkflows.length > 0;
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900">
@@ -167,6 +143,23 @@ export const CrossDomainBridges: React.FC = () => {
       </div>
 
       <div className="p-6">
+        {!hasData ? (
+          <div className="flex items-center justify-center py-32">
+            <div className="text-center max-w-md">
+              <GitBranch className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                No Cross-Domain Bridges Found
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 mb-6">
+                Cross-domain bridges will appear here once workflows with multiple domain linkages are created.
+              </p>
+              <p className="text-sm text-gray-500 dark:text-gray-500">
+                The cross_domain_linkages table is not yet populated with data.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
         <div className="grid grid-cols-3 gap-6 mb-6">
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
             <div className="flex items-center justify-between mb-2">
@@ -333,6 +326,8 @@ export const CrossDomainBridges: React.FC = () => {
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   );

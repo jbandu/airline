@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Folder, Search, TrendingUp, Layers, Activity, Upload, X, Network, Plus } from 'lucide-react';
+import { Folder, Search, TrendingUp, Layers, Activity, Upload, X, Bot, Save } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Domain, Subdomain } from '../types/database.types';
@@ -18,6 +18,11 @@ export const Domains: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [agentCount, setAgentCount] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState('');
+  const [editedDescription, setEditedDescription] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -31,20 +36,38 @@ export const Domains: React.FC = () => {
       const [domainsResult, subdomainsResult, workflowsResult] = await Promise.all([
         supabase.from('domains').select('*').order('name'),
         supabase.from('subdomains').select('*').order('name'),
-        supabase.from('workflows').select('id, subdomain_id').is('archived_at', null),
+        supabase.from('workflows').select('agentic_function_type').is('archived_at', null),
       ]);
 
       if (domainsResult.data && subdomainsResult.data) {
         setSubdomains(subdomainsResult.data);
 
-        const workflowCountBySubdomain = new Map<string, number>();
-        if (workflowsResult.data) {
-          workflowsResult.data.forEach((workflow) => {
-            if (workflow.subdomain_id) {
-              workflowCountBySubdomain.set(
-                workflow.subdomain_id,
-                (workflowCountBySubdomain.get(workflow.subdomain_id) || 0) + 1
-              );
+        // Count unique agent types from workflows
+        const uniqueAgentTypes = new Set(
+          workflowsResult.data
+            ?.map(w => w.agentic_function_type)
+            .filter(type => type && type.trim() !== '')
+        );
+        setAgentCount(uniqueAgentTypes.size);
+
+        const domainsWithStats: DomainWithStats[] = await Promise.all(
+          domainsResult.data.map(async (domain) => {
+            const domainSubdomains = subdomainsResult.data.filter(
+              (sd) => sd.domain_id === domain.id
+            );
+            const subdomainCount = domainSubdomains.length;
+
+            const subdomainIds = domainSubdomains.map(sd => sd.id);
+
+            let workflowCount = 0;
+            if (subdomainIds.length > 0) {
+              const { count } = await supabase
+                .from('workflows')
+                .select('*', { count: 'exact', head: true })
+                .in('subdomain_id', subdomainIds)
+                .is('archived_at', null);
+
+              workflowCount = count || 0;
             }
           });
         }
@@ -90,7 +113,7 @@ export const Domains: React.FC = () => {
     totalDomains: domains.length,
     totalSubdomains: subdomains.length,
     totalWorkflows: domains.reduce((sum, d) => sum + d.workflowCount, 0),
-    avgSubdomainsPerDomain: domains.length > 0 ? Math.round((subdomains.length / domains.length) * 10) / 10 : 0,
+    agentTypes: agentCount,
   };
 
   const domainColors = [
@@ -197,12 +220,61 @@ export const Domains: React.FC = () => {
     navigate(`/subdomains?subdomain=${subdomainId}`);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-cyan-500 mx-auto"></div>
-          <p className="text-cyan-400 mt-6 text-lg">Loading domains...</p>
+  const handleEditDomain = () => {
+    if (selectedDomain) {
+      setEditedName(selectedDomain.name);
+      setEditedDescription(selectedDomain.description);
+      setIsEditing(true);
+    }
+  };
+
+  const handleSaveDomain = async () => {
+    if (!selectedDomain) return;
+
+    try {
+      setSaving(true);
+
+      const { error } = await supabase
+        .from('domains')
+        .update({
+          name: editedName,
+          description: editedDescription,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', selectedDomain.id);
+
+      if (error) throw error;
+
+      await loadData();
+
+      const updatedDomain = domains.find(d => d.id === selectedDomain.id);
+      if (updatedDomain) {
+        setSelectedDomain(updatedDomain);
+      }
+
+      setIsEditing(false);
+    } catch (error: any) {
+      console.error('Error saving domain:', error);
+      alert('Failed to save domain: ' + error.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditedName('');
+    setEditedDescription('');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Business Domains</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            {domains.length} core business domains with {subdomains.length} subdomains
+          </p>
         </div>
       </div>
     );
@@ -251,20 +323,15 @@ export const Domains: React.FC = () => {
             <p className="text-4xl font-bold text-white">{stats.totalSubdomains}</p>
             <p className="text-xs text-gray-500 mt-1">Functional areas</p>
           </div>
-
-          <div className="glass rounded-2xl p-6 animate-fade-in animation-delay-400">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-400">Workflows</h3>
-              <Activity className="w-5 h-5 text-amber-400" />
+        </div>
+        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+              <Bot className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
-            <p className="text-4xl font-bold text-white">{stats.totalWorkflows}</p>
-            <p className="text-xs text-gray-500 mt-1">Documented processes</p>
-          </div>
-
-          <div className="glass rounded-2xl p-6 animate-fade-in animation-delay-600">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium text-gray-400">Avg Subdomains</h3>
-              <TrendingUp className="w-5 h-5 text-purple-400" />
+            <div>
+              <div className="text-sm text-gray-600 dark:text-gray-400">Agent Types</div>
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.agentTypes}</div>
             </div>
             <p className="text-4xl font-bold text-white">{stats.avgSubdomainsPerDomain}</p>
             <p className="text-xs text-gray-500 mt-1">Per domain</p>
@@ -359,136 +426,185 @@ export const Domains: React.FC = () => {
 
       {/* Modal */}
       {selectedDomain && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setSelectedDomain(null)}>
-          <div className="glass rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-white/20" onClick={(e) => e.stopPropagation()}>
-            <div className="sticky top-0 bg-gradient-to-r from-cyan-600 to-blue-600 px-6 py-6 flex items-center justify-between rounded-t-2xl">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setSelectedDomain(null); setIsEditing(false); }}>
+          <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4 flex items-center justify-between">
               <div>
-                <h2 className="text-3xl font-bold text-white">{selectedDomain.name}</h2>
-                <p className="text-cyan-100 mt-1">Domain Details</p>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  {isEditing ? 'Edit Domain' : selectedDomain.name}
+                </h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {isEditing ? 'Update domain details' : 'Domain Details'}
+                </p>
               </div>
-              <button
-                onClick={() => setSelectedDomain(null)}
-                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/20 hover:bg-white/30 transition-colors"
-              >
-                <X className="w-6 h-6 text-white" />
-              </button>
+              <div className="flex items-center gap-2">
+                {!isEditing && (
+                  <button
+                    onClick={handleEditDomain}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Edit
+                  </button>
+                )}
+                <button
+                  onClick={() => { setSelectedDomain(null); setIsEditing(false); }}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <span className="text-2xl text-gray-500">&times;</span>
+                </button>
+              </div>
             </div>
 
             <div className="p-6 space-y-6">
-              <div>
-                <label className="text-sm font-semibold text-cyan-400 block mb-3">Domain Icon</label>
-                <div className="flex items-center gap-4">
-                  {selectedDomain.icon_url ? (
-                    selectedDomain.icon_url.startsWith('http') ? (
-                      <div className="relative group">
-                        <img
-                          src={selectedDomain.icon_url}
-                          alt={selectedDomain.name}
-                          className="w-20 h-20 rounded-xl object-cover shadow-lg"
+              {isEditing ? (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                      Domain Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editedName}
+                      onChange={(e) => setEditedName(e.target.value)}
+                      className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter domain name"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                      Description
+                    </label>
+                    <textarea
+                      value={editedDescription}
+                      onChange={(e) => setEditedDescription(e.target.value)}
+                      rows={4}
+                      className="w-full px-4 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Enter domain description"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
+                    <button
+                      onClick={handleSaveDomain}
+                      disabled={saving || !editedName.trim()}
+                      className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>{saving ? 'Saving...' : 'Save Changes'}</span>
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      disabled={saving}
+                      className="px-6 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg transition-colors disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-3">Domain Icon</label>
+                    <div className="flex items-center gap-4">
+                      {selectedDomain.icon_url ? (
+                        <div className="relative group">
+                          <img
+                            src={selectedDomain.icon_url}
+                            alt={selectedDomain.name}
+                            className="w-20 h-20 rounded-xl object-cover shadow-lg"
+                          />
+                          <button
+                            onClick={handleRemoveIcon}
+                            disabled={uploading}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-20 h-20 bg-gray-100 dark:bg-gray-800 rounded-xl flex items-center justify-center">
+                          <Folder className="w-10 h-10 text-gray-400" />
+                        </div>
+                      )}
+                      <div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleIconUpload}
+                          className="hidden"
                         />
                         <button
-                          onClick={handleRemoveIcon}
+                          onClick={() => fileInputRef.current?.click()}
                           disabled={uploading}
-                          className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          <X className="w-4 h-4" />
+                          <Upload className="w-4 h-4" />
+                          <span>{uploading ? 'Uploading...' : selectedDomain.icon_url ? 'Change Icon' : 'Upload Icon'}</span>
                         </button>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                          Max 2MB. JPG, PNG, or SVG.
+                        </p>
                       </div>
-                    ) : (
-                      <div className="relative group">
-                        <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg text-4xl">
-                          {selectedDomain.icon_url}
-                        </div>
-                        <button
-                          onClick={handleRemoveIcon}
-                          disabled={uploading}
-                          className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    )
-                  ) : (
-                    <div className="w-20 h-20 bg-white/5 rounded-xl flex items-center justify-center">
-                      <Folder className="w-10 h-10 text-gray-400" />
                     </div>
-                  )}
+                  </div>
+
                   <div>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleIconUpload}
-                      className="hidden"
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={uploading}
-                      className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:shadow-lg hover:shadow-cyan-500/50 text-white rounded-xl font-medium transition-all disabled:opacity-50"
-                    >
-                      <Upload className="w-4 h-4" />
-                      <span>{uploading ? 'Uploading...' : selectedDomain.icon_url ? 'Change Icon' : 'Upload Icon'}</span>
-                    </button>
-                    <p className="text-xs text-gray-400 mt-2">
-                      Max 2MB. JPG, PNG, or SVG.
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">Description</label>
+                    <p className="text-gray-600 dark:text-gray-400">
+                      {selectedDomain.description || 'No description available'}
                     </p>
                   </div>
-                </div>
-              </div>
 
-              <div>
-                <label className="text-sm font-semibold text-cyan-400 block mb-2">Description</label>
-                <p className="text-gray-300">
-                  {selectedDomain.description || 'No description available'}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <div className="text-sm text-gray-400 mb-1">Subdomains</div>
-                  <div className="text-2xl font-bold text-cyan-400">{selectedDomain.subdomainCount}</div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <div className="text-sm text-gray-400 mb-1">Workflows</div>
-                  <div className="text-2xl font-bold text-blue-400">{selectedDomain.workflowCount}</div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <div className="text-sm text-gray-400 mb-1">Created</div>
-                  <div className="text-sm font-medium text-white">
-                    {new Date(selectedDomain.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-semibold text-cyan-400 block mb-3">Subdomains ({getSubdomainsForDomain(selectedDomain.id).length})</label>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {getSubdomainsForDomain(selectedDomain.id).length > 0 ? (
-                    getSubdomainsForDomain(selectedDomain.id).map((subdomain) => (
-                      <div
-                        key={subdomain.id}
-                        onClick={() => handleSubdomainClick(subdomain.id)}
-                        className="bg-white/5 border border-white/10 rounded-lg p-4 hover:bg-cyan-500/10 hover:border-cyan-500/30 transition-all cursor-pointer group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Folder className="w-5 h-5 text-gray-400 group-hover:text-cyan-400 transition-colors" />
-                          <div className="flex-1">
-                            <div className="font-medium text-white group-hover:text-cyan-400 transition-colors">{subdomain.name}</div>
-                            {subdomain.description && (
-                              <div className="text-sm text-gray-400 mt-1">{subdomain.description}</div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-gray-400">
-                      <Folder className="w-12 h-12 mx-auto mb-2 opacity-30" />
-                      <p>No subdomains yet</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Subdomains</div>
+                      <div className="text-2xl font-bold text-gray-900 dark:text-white">{selectedDomain.subdomainCount}</div>
                     </div>
-                  )}
-                </div>
-              </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Workflows</div>
+                      <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{selectedDomain.workflowCount}</div>
+                    </div>
+                    <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Created</div>
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {new Date(selectedDomain.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-3">Subdomains ({getSubdomainsForDomain(selectedDomain.id).length})</label>
+                    <div className="space-y-2">
+                      {getSubdomainsForDomain(selectedDomain.id).length > 0 ? (
+                        getSubdomainsForDomain(selectedDomain.id).map((subdomain) => (
+                          <div
+                            key={subdomain.id}
+                            onClick={() => handleSubdomainClick(subdomain.id)}
+                            className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:border-blue-200 dark:hover:border-blue-700 border border-transparent transition-all cursor-pointer group"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Folder className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                              <div className="flex-1">
+                                <div className="font-medium text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{subdomain.name}</div>
+                                {subdomain.description && (
+                                  <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">{subdomain.description}</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-8 text-gray-400">
+                          <Folder className="w-12 h-12 mx-auto mb-2 opacity-30" />
+                          <p>No subdomains yet</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
