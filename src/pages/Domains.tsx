@@ -256,19 +256,6 @@ export const Domains: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Business Domains</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            {domains.length} core business domains with {subdomains.length} subdomains
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 relative overflow-hidden">
       {/* Animated background */}
       <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
