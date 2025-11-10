@@ -1,0 +1,7 @@
+neo4j==5.14.0
+supabase==2.0.0
+python-dotenv==1.0.0
+anthropic>=0.34.0
+
+# Data entity mapping script dependencies
+# Already included above: supabase, python-dotenv

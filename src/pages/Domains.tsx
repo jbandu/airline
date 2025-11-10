@@ -69,14 +69,26 @@ export const Domains: React.FC = () => {
 
               workflowCount = count || 0;
             }
+          });
+        }
 
-            return {
-              ...domain,
-              subdomainCount,
-              workflowCount,
-            };
-          })
-        );
+        const domainsWithStats: DomainWithStats[] = domainsResult.data.map((domain) => {
+          const domainSubdomains = subdomainsResult.data.filter(
+            (sd) => sd.domain_id === domain.id
+          );
+          const subdomainCount = domainSubdomains.length;
+
+          let workflowCount = 0;
+          domainSubdomains.forEach((subdomain) => {
+            workflowCount += workflowCountBySubdomain.get(subdomain.id) || 0;
+          });
+
+          return {
+            ...domain,
+            subdomainCount,
+            workflowCount,
+          };
+        });
 
         setDomains(domainsWithStats);
       }
@@ -105,16 +117,16 @@ export const Domains: React.FC = () => {
   };
 
   const domainColors = [
-    'from-blue-500 to-blue-600',
-    'from-green-500 to-green-600',
-    'from-amber-500 to-amber-600',
-    'from-red-500 to-red-600',
-    'from-purple-500 to-purple-600',
-    'from-pink-500 to-pink-600',
-    'from-cyan-500 to-cyan-600',
-    'from-teal-500 to-teal-600',
-    'from-orange-500 to-orange-600',
-    'from-lime-500 to-lime-600',
+    'from-blue-500 to-cyan-600',
+    'from-green-500 to-emerald-600',
+    'from-amber-500 to-orange-600',
+    'from-red-500 to-rose-600',
+    'from-purple-500 to-pink-600',
+    'from-pink-500 to-fuchsia-600',
+    'from-cyan-500 to-teal-600',
+    'from-teal-500 to-green-600',
+    'from-orange-500 to-amber-600',
+    'from-lime-500 to-green-600',
   ];
 
   const getDomainColor = (index: number) => {
@@ -265,39 +277,51 @@ export const Domains: React.FC = () => {
           </p>
         </div>
       </div>
+    );
+  }
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-              <Layers className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 relative overflow-hidden">
+      {/* Animated background */}
+      <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-2000"></div>
+      <div className="absolute bottom-0 left-1/2 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob animation-delay-4000"></div>
+
+      <div className="relative z-10 p-8 max-w-[1800px] mx-auto">
+        {/* Header */}
+        <div className="mb-8 animate-fade-in">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl shadow-lg shadow-cyan-500/50 animate-pulse-glow">
+              <Layers className="w-10 h-10 text-white" />
             </div>
-            <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Domains</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalDomains}</div>
+            <div className="flex-1">
+              <h1 className="text-5xl font-bold text-gradient-cyan">Business Domains</h1>
+              <p className="text-cyan-300 text-lg mt-1">
+                {domains.length} core business domains with {subdomains.length} subdomains
+              </p>
             </div>
           </div>
         </div>
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-              <Folder className="w-5 h-5 text-green-600 dark:text-green-400" />
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="glass rounded-2xl p-6 animate-fade-in">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-400">Total Domains</h3>
+              <Layers className="w-5 h-5 text-cyan-400" />
             </div>
-            <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Subdomains</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalSubdomains}</div>
-            </div>
+            <p className="text-4xl font-bold text-white">{stats.totalDomains}</p>
+            <p className="text-xs text-gray-500 mt-1">Business areas</p>
           </div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/30 rounded-lg flex items-center justify-center">
-              <Activity className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+
+          <div className="glass rounded-2xl p-6 animate-fade-in animation-delay-200">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-400">Subdomains</h3>
+              <Folder className="w-5 h-5 text-green-400" />
             </div>
-            <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Workflows</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalWorkflows}</div>
-            </div>
+            <p className="text-4xl font-bold text-white">{stats.totalSubdomains}</p>
+            <p className="text-xs text-gray-500 mt-1">Functional areas</p>
           </div>
         </div>
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
@@ -309,44 +333,41 @@ export const Domains: React.FC = () => {
               <div className="text-sm text-gray-600 dark:text-gray-400">Agent Types</div>
               <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.agentTypes}</div>
             </div>
+            <p className="text-4xl font-bold text-white">{stats.avgSubdomainsPerDomain}</p>
+            <p className="text-xs text-gray-500 mt-1">Per domain</p>
           </div>
         </div>
-      </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-        <input
-          type="text"
-          placeholder="Search domains..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 border border-gray-200 dark:border-gray-800 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="text-center">
-            <div className="inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-gray-600 dark:text-gray-400">Loading domains...</p>
+        {/* Search */}
+        <div className="glass rounded-2xl p-4 mb-8 animate-fade-in animation-delay-800">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search domains..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
           </div>
         </div>
-      ) : filteredDomains.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-12 text-center">
-          <div className="max-w-md mx-auto">
-            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+
+        {/* Domain Grid */}
+        {filteredDomains.length === 0 ? (
+          <div className="glass rounded-2xl p-12 text-center">
+            <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4">
               <Folder className="w-8 h-8 text-gray-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">No domains found</h3>
-            <p className="text-gray-600 dark:text-gray-400">Try adjusting your search term</p>
+            <h3 className="text-xl font-bold text-white mb-2">No domains found</h3>
+            <p className="text-gray-400">Try adjusting your search term</p>
           </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredDomains.map((domain, index) => (
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredDomains.map((domain, index) => (
               <div
                 key={domain.id}
-                className="group bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+                className="glass rounded-2xl overflow-hidden card-hover cursor-pointer animate-fade-in"
+                style={{ animationDelay: `${Math.min(index * 50, 1000)}ms` }}
                 onClick={() => setSelectedDomain(domain)}
               >
                 <div className={`h-2 bg-gradient-to-r ${getDomainColor(index)}`} />
@@ -354,40 +375,56 @@ export const Domains: React.FC = () => {
                 <div className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     {domain.icon_url ? (
-                      <div className="w-12 h-12 rounded-xl overflow-hidden shadow-lg">
-                        <img src={domain.icon_url} alt={domain.name} className="w-full h-full object-cover" />
-                      </div>
+                      domain.icon_url.startsWith('http') ? (
+                        <div className="w-14 h-14 rounded-xl overflow-hidden shadow-lg shadow-white/10">
+                          <img src={domain.icon_url} alt={domain.name} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${getDomainColor(index)} flex items-center justify-center shadow-lg text-3xl`}>
+                          {domain.icon_url}
+                        </div>
+                      )
                     ) : (
-                      <div className={`w-12 h-12 bg-gradient-to-br ${getDomainColor(index)} rounded-xl flex items-center justify-center shadow-lg`}>
-                        <Folder className="w-6 h-6 text-white" />
+                      <div className={`w-14 h-14 bg-gradient-to-br ${getDomainColor(index)} rounded-xl flex items-center justify-center shadow-lg`}>
+                        <Folder className="w-7 h-7 text-white" />
                       </div>
                     )}
                   </div>
 
-                  <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors min-h-[3.5rem]">
+                  <h3 className="font-bold text-lg text-white mb-2 line-clamp-2 min-h-[3.5rem]">
                     {domain.name}
                   </h3>
 
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 min-h-[2.5rem]">
+                  <p className="text-sm text-gray-400 mb-4 line-clamp-2 min-h-[2.5rem]">
                     {domain.description || 'No description'}
                   </p>
 
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Subdomains</span>
-                      <span className="text-lg font-bold text-gray-900 dark:text-white">{domain.subdomainCount}</span>
+                    <div className="flex items-center justify-between py-2 px-3 bg-white/5 rounded-lg">
+                      <span className="text-sm text-gray-400">Subdomains</span>
+                      <span className="text-lg font-bold text-cyan-400">{domain.subdomainCount}</span>
                     </div>
-                    <div className="flex items-center justify-between py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">Workflows</span>
-                      <span className="text-lg font-bold text-blue-600 dark:text-blue-400">{domain.workflowCount}</span>
+                    <div className="flex items-center justify-between py-2 px-3 bg-white/5 rounded-lg">
+                      <span className="text-sm text-gray-400">Workflows</span>
+                      <span className="text-lg font-bold text-blue-400">{domain.workflowCount}</span>
                     </div>
                   </div>
                 </div>
               </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
+        {/* Add Domain Button - Bottom */}
+        <div className="mt-12 flex justify-center">
+          <button className="glass rounded-xl px-6 py-3 flex items-center gap-2 text-gray-300 hover:text-white hover:bg-white/10 transition-all border border-white/10 hover:border-cyan-500/50">
+            <Plus className="w-5 h-5" />
+            <span className="font-medium">Add Domain</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Modal */}
       {selectedDomain && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => { setSelectedDomain(null); setIsEditing(false); }}>
           <div className="bg-white dark:bg-gray-900 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>

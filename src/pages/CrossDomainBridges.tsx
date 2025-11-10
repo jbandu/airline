@@ -38,32 +38,24 @@ export const CrossDomainBridges: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      // Get workflows grouped by domains
-      const { data: workflowData, error: workflowError } = await supabase
-        .from('v_workflow_agent_assignments')
-        .select('workflow_id, workflow_name, domain, subdomain');
+      // Get cross-domain bridge data
+      const { data: bridgeData, error: bridgeError } = await supabase
+        .from('v_cross_domain_bridges')
+        .select('*')
+        .order('bridge_count', { ascending: false });
 
-      if (workflowError) throw workflowError;
+      if (bridgeError) {
+        console.error('Error loading bridges:', bridgeError);
+        throw bridgeError;
+      }
 
-      // Get cross-domain linkages if they exist
-      const { data: linkageData } = await supabase
-        .from('cross_domain_linkages')
-        .select(`
-          workflow_id,
-          linked_domain_id,
-          linkage_type,
-          linkage_strength
-        `);
+      if (!bridgeData || bridgeData.length === 0) {
+        setLoading(false);
+        return;
+      }
 
-      // Get domain information
-      const { data: domains } = await supabase
-        .from('domains')
-        .select('id, name');
-
-      // Process data to create flows
-      const domainMap = new Map(domains?.map(d => [d.id, d.name]) || []);
+      // Process bridge data to create flows
       const flowMap = new Map<string, DomainFlow>();
-      const workflowMap = new Map<number, string>();
 
       // Process linkages if they exist
       if (linkageData && linkageData.length > 0) {

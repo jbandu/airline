@@ -32,3 +32,10 @@ supabase/.temp/
 
 # Build output
 dist/
+.env
+
+# Playwright Test Results
+test-results/
+playwright-report/
+playwright/.cache/
+*.trace.zip

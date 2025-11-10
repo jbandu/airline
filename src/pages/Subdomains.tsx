@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { Domain, Subdomain, User } from '../types/database.types';
 import {
@@ -145,7 +145,7 @@ export const Subdomains: React.FC = () => {
       filtered = filtered.filter(
         (s) =>
           s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          s.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
           s.domain?.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -477,20 +477,39 @@ export const Subdomains: React.FC = () => {
     );
   }
 
+  // Group subdomains by domain
+  const groupedByDomain = useMemo(() => {
+    const grouped = new Map<string, { domain: Domain; subdomains: SubdomainWithDetails[] }>();
+
+    filteredSubdomains.forEach((subdomain) => {
+      if (subdomain.domain) {
+        if (!grouped.has(subdomain.domain.id)) {
+          grouped.set(subdomain.domain.id, {
+            domain: subdomain.domain,
+            subdomains: [],
+          });
+        }
+        grouped.get(subdomain.domain.id)!.subdomains.push(subdomain);
+      }
+    });
+
+    return Array.from(grouped.values()).sort((a, b) => a.domain.name.localeCompare(b.domain.name));
+  }, [filteredSubdomains]);
+
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Subdomains</h1>
-          <p className="text-gray-600 mt-1">
-            Explore all {filteredSubdomains.length} subdomain{filteredSubdomains.length !== 1 ? 's' : ''}
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Subdomains by Domain</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Explore {filteredSubdomains.length} subdomain{filteredSubdomains.length !== 1 ? 's' : ''} across {groupedByDomain.length} domain{groupedByDomain.length !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
 
       {/* Controls */}
-      <div className="bg-white rounded-lg shadow-md p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Search */}
           <div className="flex-1">
@@ -501,7 +520,7 @@ export const Subdomains: React.FC = () => {
                 placeholder="Search subdomains..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
               />
             </div>
           </div>
@@ -511,7 +530,7 @@ export const Subdomains: React.FC = () => {
             <select
               value={selectedDomain}
               onChange={(e) => setSelectedDomain(e.target.value)}
-              className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+              className="appearance-none pl-4 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white cursor-pointer"
             >
               <option value="all">All Domains</option>
               {domains.map((domain) => (
@@ -528,7 +547,7 @@ export const Subdomains: React.FC = () => {
             <select
               value={sortMode}
               onChange={(e) => setSortMode(e.target.value as SortMode)}
-              className="appearance-none pl-4 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white cursor-pointer"
+              className="appearance-none pl-4 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white cursor-pointer"
             >
               <option value="name">Sort by Name</option>
               <option value="recent">Recently Added</option>
@@ -536,46 +555,6 @@ export const Subdomains: React.FC = () => {
               <option value="domain">Domain Name</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 pointer-events-none" />
-          </div>
-
-          {/* View Mode */}
-          <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
-            <button
-              onClick={() => setViewMode('grid')}
-              className={`p-2 rounded ${
-                viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
-              }`}
-              title="Grid View"
-            >
-              <Grid className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`p-2 rounded ${
-                viewMode === 'list' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
-              }`}
-              title="List View"
-            >
-              <List className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`p-2 rounded ${
-                viewMode === 'table' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
-              }`}
-              title="Table View"
-            >
-              <Table className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => setViewMode('timeline')}
-              className={`p-2 rounded ${
-                viewMode === 'timeline' ? 'bg-white shadow-sm' : 'hover:bg-gray-200'
-              }`}
-              title="Timeline View"
-            >
-              <TrendingUp className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </div>
@@ -587,8 +566,8 @@ export const Subdomains: React.FC = () => {
           <div className="text-sm opacity-90">Total Subdomains</div>
         </div>
         <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-lg p-4 text-white">
-          <div className="text-3xl font-bold">{domains.length}</div>
-          <div className="text-sm opacity-90">Domains</div>
+          <div className="text-3xl font-bold">{groupedByDomain.length}</div>
+          <div className="text-sm opacity-90">Active Domains</div>
         </div>
         <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg p-4 text-white">
           <div className="text-3xl font-bold">
@@ -609,23 +588,83 @@ export const Subdomains: React.FC = () => {
         </div>
       </div>
 
-      {/* Content */}
-      {filteredSubdomains.length === 0 ? (
-        <div className="bg-white rounded-lg shadow-md p-12 text-center">
+      {/* Content - Grouped by Domain */}
+      {groupedByDomain.length === 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-12 text-center">
           <div className="text-gray-400 text-lg">No subdomains found</div>
-          <p className="text-gray-500 text-sm mt-2">
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">
             {searchTerm || selectedDomain !== 'all'
               ? 'Try adjusting your filters'
               : 'Get started by creating a domain and subdomain'}
           </p>
         </div>
       ) : (
-        <>
-          {viewMode === 'grid' && renderGridView()}
-          {viewMode === 'list' && renderListView()}
-          {viewMode === 'table' && renderTableView()}
-          {viewMode === 'timeline' && renderTimelineView()}
-        </>
+        <div className="space-y-6">
+          {groupedByDomain.map(({ domain, subdomains }) => (
+            <div key={domain.id} className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+              {/* Domain Header */}
+              <div className={`bg-gradient-to-r ${getDomainColor(domain.id)} p-6 text-white`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 bg-white/20 rounded-lg backdrop-blur-sm">
+                      <Folder className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold">{domain.name}</h2>
+                      {domain.description && (
+                        <p className="text-white/90 mt-1">{domain.description}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold">{subdomains.length}</div>
+                    <div className="text-sm opacity-90">Subdomain{subdomains.length !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Subdomains List */}
+              <div className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {subdomains.map((subdomain) => (
+                    <div
+                      key={subdomain.id}
+                      onClick={() => handleSubdomainClick(subdomain)}
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-lg hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-200 cursor-pointer bg-gray-50 dark:bg-gray-700"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-gray-900 dark:text-white text-base">{subdomain.name}</h3>
+                        <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
+                          <FileText className="w-4 h-4 mr-1" />
+                          <span>{subdomain.workflowCount}</span>
+                        </div>
+                      </div>
+
+                      {subdomain.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">
+                          {subdomain.description}
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 pt-3 border-t border-gray-200 dark:border-gray-600">
+                        <div className="flex items-center">
+                          <Clock className="w-3 h-3 mr-1" />
+                          <span>{getRelativeTime(subdomain.created_at)}</span>
+                        </div>
+                        {subdomain.creator_name && (
+                          <div className="flex items-center" title={subdomain.creator_email || subdomain.creator_name}>
+                            <UserIcon className="w-3 h-3 mr-1" />
+                            <span className="truncate max-w-[100px]">{subdomain.creator_name}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

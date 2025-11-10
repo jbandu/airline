@@ -1,8 +1,8 @@
 import React from 'react';
-import { Search, Bell, Sun, Moon, LogOut } from 'lucide-react';
+import { Search, Bell, Sun, Moon, LogOut, User } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   sidebarCollapsed: boolean;
@@ -19,10 +19,12 @@ const breadcrumbMap: Record<string, string[]> = {
 
 export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed }) => {
   const { theme, toggleTheme } = useTheme();
-  const { signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const breadcrumbs = breadcrumbMap[location.pathname] || ['Dashboard'];
+  const photoUrl = user?.user_metadata?.photo_url || '';
 
   return (
     <header
@@ -70,12 +72,24 @@ export const Header: React.FC<HeaderProps> = ({ sidebarCollapsed }) => {
             {theme === 'light' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
           </button>
 
+          <div className="h-8 w-px bg-gray-200 dark:bg-gray-700"></div>
+
           <button
-            onClick={() => signOut()}
-            className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            title="Sign Out"
+            onClick={() => navigate('/settings')}
+            className="flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors p-1.5"
+            title="Profile & Settings"
           >
-            <LogOut className="w-5 h-5" />
+            {photoUrl ? (
+              <img
+                src={photoUrl}
+                alt="Profile"
+                className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-200 dark:ring-gray-700 hover:ring-blue-500 dark:hover:ring-blue-400 transition-all"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold ring-2 ring-gray-200 dark:ring-gray-700 hover:ring-blue-500 dark:hover:ring-blue-400 transition-all">
+                {user?.email?.[0].toUpperCase()}
+              </div>
+            )}
           </button>
         </div>
       </div>

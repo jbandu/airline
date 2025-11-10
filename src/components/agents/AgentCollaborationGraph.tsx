@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 
@@ -67,12 +67,32 @@ export const AgentCollaborationGraph: React.FC<Props> = ({
       size: 20 + agent.workflow_count * 2,
     }));
 
-    const links: GraphLink[] = collaborations.map((collab) => ({
-      source: `agent_${collab.source_id}`,
-      target: `agent_${collab.target_id}`,
-      strength: collab.strength,
-      type: collab.collaboration_type,
-    }));
+    // Create a Set of valid agent IDs for quick lookup
+    const validAgentIds = new Set(agents.map(a => a.id));
+
+    // Filter out collaborations with invalid agent IDs
+    const links: GraphLink[] = collaborations
+      .filter((collab) => {
+        const hasValidSource = collab.source_id && validAgentIds.has(collab.source_id);
+        const hasValidTarget = collab.target_id && validAgentIds.has(collab.target_id);
+
+        if (!hasValidSource || !hasValidTarget) {
+          console.warn('Skipping invalid collaboration:', {
+            source_id: collab.source_id,
+            target_id: collab.target_id,
+            hasValidSource,
+            hasValidTarget
+          });
+          return false;
+        }
+        return true;
+      })
+      .map((collab) => ({
+        source: `agent_${collab.source_id}`,
+        target: `agent_${collab.target_id}`,
+        strength: collab.strength,
+        type: collab.collaboration_type,
+      }));
 
     const g = svg.append('g');
 

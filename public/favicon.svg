@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="url(#grad)"/>
+
+  <!-- Airplane shape -->
+  <path d="M 50 30 L 52 42 L 65 40 L 66 43 L 52 45 L 54 55 L 60 58 L 59 61 L 50 58 L 41 61 L 40 58 L 46 55 L 48 45 L 34 43 L 35 40 L 48 42 Z" fill="white"/>
+
+  <!-- Graph line accent -->
+  <path d="M 25 70 L 35 65 L 45 68 L 55 60 L 65 63 L 75 58" stroke="white" stroke-width="2" fill="none" opacity="0.6"/>
+  <circle cx="35" cy="65" r="2" fill="white" opacity="0.8"/>
+  <circle cx="45" cy="68" r="2" fill="white" opacity="0.8"/>
+  <circle cx="55" cy="60" r="2" fill="white" opacity="0.8"/>
+  <circle cx="65" cy="63" r="2" fill="white" opacity="0.8"/>
+</svg>

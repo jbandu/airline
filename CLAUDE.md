@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**AirFlow** is an airline workflow management application for cataloging, analyzing, and prioritizing agentic AI transformation opportunities across airline operations. Built with React 18 + TypeScript, Vite, and Supabase backend.
+**AeroGraph** is an airline workflow management application for cataloging, analyzing, and prioritizing agentic AI transformation opportunities across airline operations. Built with React 18 + TypeScript, Vite, and Supabase backend.
 
 ## Development Commands
 

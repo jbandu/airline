@@ -8,6 +8,268 @@
   }
 
   body {
-    @apply bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-white;
+    @apply bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-gray-100;
   }
+
+  /* Palantir-inspired dark mode colors */
+  :root.dark {
+    --color-bg-primary: 2 6 23; /* slate-950 */
+    --color-bg-secondary: 15 23 42; /* slate-900 */
+    --color-bg-tertiary: 30 41 59; /* slate-800 */
+    --color-accent-cyan: 6 182 212; /* cyan-500 */
+    --color-accent-blue: 59 130 246; /* blue-500 */
+  }
+}
+
+@layer utilities {
+  /* Glassmorphism */
+  .glass {
+    @apply bg-white/10 backdrop-blur-xl border border-white/20;
+  }
+
+  .glass-light {
+    @apply bg-white/5 backdrop-blur-sm border border-white/10;
+  }
+
+  /* Grid pattern background */
+  .bg-grid-pattern {
+    background-image:
+      linear-gradient(to right, rgba(99, 102, 241, 0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(99, 102, 241, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+  }
+
+  /* Gradient text */
+  .text-gradient-cyan {
+    @apply bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent;
+  }
+
+  .text-gradient-purple {
+    @apply bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent;
+  }
+
+  /* Smooth transitions */
+  .transition-smooth {
+    @apply transition-all duration-300 ease-in-out;
+  }
+
+  /* Glow effects */
+  .glow-cyan {
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+  }
+
+  /* Card hover effect */
+  .card-hover {
+    @apply transition-smooth hover:shadow-xl hover:-translate-y-1;
+  }
+}
+
+/* Custom animations */
+@keyframes blob {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  25% { transform: translate(20px, -50px) scale(1.1); }
+  50% { transform: translate(-20px, 20px) scale(0.9); }
+  75% { transform: translate(50px, 50px) scale(1.05); }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+  }
+  50% {
+    opacity: 0.8;
+    box-shadow: 0 0 30px rgba(6, 182, 212, 0.6);
+  }
+}
+
+.animate-blob {
+  animation: blob 20s infinite;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.5s ease-out forwards;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-400 {
+  animation-delay: 400ms;
+}
+
+.animation-delay-600 {
+  animation-delay: 600ms;
+}
+
+.animation-delay-800 {
+  animation-delay: 800ms;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+/* ============================================
+   UI THEME PROFILES
+   ============================================ */
+
+/* Palantir Dark Theme (Default) - Sophisticated dark theme with glass-morphism */
+:root.theme-palantir-dark {
+  /* Backgrounds */
+  --theme-bg-primary: linear-gradient(to bottom right, rgb(2, 6, 23), rgb(30, 58, 138), rgb(2, 6, 23));
+  --theme-bg-secondary: rgba(255, 255, 255, 0.05);
+  --theme-bg-tertiary: rgba(255, 255, 255, 0.1);
+  --theme-bg-card: rgba(255, 255, 255, 0.05);
+  --theme-bg-hover: rgba(255, 255, 255, 0.1);
+
+  /* Borders */
+  --theme-border-primary: rgba(255, 255, 255, 0.1);
+  --theme-border-secondary: rgba(255, 255, 255, 0.2);
+  --theme-border-accent: rgba(6, 182, 212, 0.3);
+
+  /* Text */
+  --theme-text-primary: rgb(255, 255, 255);
+  --theme-text-secondary: rgb(156, 163, 175);
+  --theme-text-tertiary: rgb(107, 114, 128);
+  --theme-text-accent: rgb(34, 211, 238);
+
+  /* Accents */
+  --theme-accent-primary: rgb(6, 182, 212);
+  --theme-accent-secondary: rgb(59, 130, 246);
+  --theme-accent-gradient: linear-gradient(to right, rgb(6, 182, 212), rgb(59, 130, 246));
+
+  /* Shadows */
+  --theme-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --theme-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  --theme-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+  --theme-shadow-glow: 0 0 20px rgba(6, 182, 212, 0.3);
+
+  /* Effects */
+  --theme-backdrop-blur: blur(16px);
+  --theme-glass-opacity: 0.1;
+}
+
+/* Classic Light Theme - Clean, professional light theme */
+:root.theme-classic-light {
+  /* Backgrounds */
+  --theme-bg-primary: linear-gradient(to bottom right, rgb(249, 250, 251), rgb(243, 244, 246), rgb(249, 250, 251));
+  --theme-bg-secondary: rgb(255, 255, 255);
+  --theme-bg-tertiary: rgb(249, 250, 251);
+  --theme-bg-card: rgb(255, 255, 255);
+  --theme-bg-hover: rgb(249, 250, 251);
+
+  /* Borders */
+  --theme-border-primary: rgb(229, 231, 235);
+  --theme-border-secondary: rgb(209, 213, 219);
+  --theme-border-accent: rgb(59, 130, 246);
+
+  /* Text */
+  --theme-text-primary: rgb(17, 24, 39);
+  --theme-text-secondary: rgb(75, 85, 99);
+  --theme-text-tertiary: rgb(156, 163, 175);
+  --theme-text-accent: rgb(37, 99, 235);
+
+  /* Accents */
+  --theme-accent-primary: rgb(59, 130, 246);
+  --theme-accent-secondary: rgb(99, 102, 241);
+  --theme-accent-gradient: linear-gradient(to right, rgb(59, 130, 246), rgb(99, 102, 241));
+
+  /* Shadows */
+  --theme-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --theme-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --theme-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --theme-shadow-glow: 0 0 20px rgba(59, 130, 246, 0.2);
+
+  /* Effects */
+  --theme-backdrop-blur: blur(0px);
+  --theme-glass-opacity: 1;
+}
+
+/* Theme-aware utility classes */
+.theme-bg-primary {
+  background: var(--theme-bg-primary);
+}
+
+.theme-bg-secondary {
+  background: var(--theme-bg-secondary);
+}
+
+.theme-bg-card {
+  background: var(--theme-bg-card);
+  border: 1px solid var(--theme-border-primary);
+}
+
+.theme-bg-card-hover:hover {
+  background: var(--theme-bg-hover);
+}
+
+.theme-text-primary {
+  color: var(--theme-text-primary);
+}
+
+.theme-text-secondary {
+  color: var(--theme-text-secondary);
+}
+
+.theme-text-accent {
+  color: var(--theme-text-accent);
+}
+
+.theme-border {
+  border-color: var(--theme-border-primary);
+}
+
+.theme-shadow {
+  box-shadow: var(--theme-shadow-md);
+}
+
+.theme-shadow-glow {
+  box-shadow: var(--theme-shadow-glow);
+}
+
+/* Glass effect that adapts to theme */
+.theme-glass {
+  background: var(--theme-bg-secondary);
+  backdrop-filter: var(--theme-backdrop-blur);
+  border: 1px solid var(--theme-border-primary);
 }

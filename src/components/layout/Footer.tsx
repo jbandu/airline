@@ -13,7 +13,7 @@ export const Footer: React.FC<FooterProps> = ({ sidebarCollapsed }) => {
     >
       <div className="h-full px-6 flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
         <div>
-          <span>&copy; 2025 AirFlow. All rights reserved.</span>
+          <span>&copy; 2025 AeroGraph. All rights reserved.</span>
         </div>
         <div className="flex items-center gap-4">
           <a href="#" className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors">

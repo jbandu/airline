@@ -48,7 +48,13 @@ export const AgentNetwork: React.FC = () => {
         .from('v_agent_network')
         .select('*');
 
-      if (agentError) throw agentError;
+      if (agentError) {
+        console.warn('Agent network view not available:', agentError);
+        setAgents([]);
+        setCollaborations([]);
+        setLoading(false);
+        return;
+      }
 
       const { data: collabData, error: collabError } = await supabase
         .from('v_agent_collaboration_edges')
@@ -62,10 +68,40 @@ export const AgentNetwork: React.FC = () => {
       setCollaborations(collabData || []);
     } catch (error) {
       console.error('Error loading agent data:', error);
+      setAgents([]);
+      setCollaborations([]);
     } finally {
       setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
+          <p className="text-gray-600 dark:text-gray-400 mt-4">Loading agent network...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (agents.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center max-w-md">
+          <Bot className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">No Agents Found</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">
+            The agent network views are not yet available in the database.
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            This feature requires database views <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">v_agent_network</code> and <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">v_agent_collaboration_edges</code> to be created.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const categoryStats = agents.reduce((acc, agent) => {
     const category = agent.category_name;
@@ -81,17 +117,6 @@ export const AgentNetwork: React.FC = () => {
   const avgAutonomy = agents.length > 0
     ? (agents.reduce((sum, agent) => sum + agent.autonomy_level, 0) / agents.length).toFixed(1)
     : 0;
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600 mx-auto"></div>
-          <p className="text-gray-600 dark:text-gray-400 mt-4">Loading agent network...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">

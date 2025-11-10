@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { UIThemeProvider } from './contexts/UIThemeContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Layout } from './components/layout/Layout';
 import { Login } from './pages/Login';
@@ -11,20 +12,25 @@ import { Workflows } from './pages/Workflows';
 import { WorkflowCreate } from './pages/WorkflowCreate';
 import { WorkflowEdit } from './pages/WorkflowEdit';
 import { WorkflowDetail } from './pages/WorkflowDetail';
-import { Analytics } from './pages/Analytics';
 import { AgentNetwork } from './pages/AgentNetwork';
-import { AgentPerformance } from './pages/AgentPerformance';
+import { KnowledgeGraphPage } from './pages/KnowledgeGraphPage';
 import { OntologyTree } from './pages/OntologyTree';
 import { CrossDomainBridges } from './pages/CrossDomainBridges';
+import { SemanticMatrixPage } from './pages/SemanticMatrixPage';
 import { Stakeholders } from './pages/Stakeholders';
 import { Settings } from './pages/Settings';
 import { DebugDashboard } from './pages/DebugDashboard';
+import { DataEntities } from './pages/DataEntities';
+import { DataFlows } from './pages/DataFlows';
+import { DataArchitectureLayers } from './pages/DataArchitectureLayers';
+import { DataLineage } from './pages/DataLineage';
 
 function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
+        <UIThemeProvider>
+          <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route
@@ -98,16 +104,6 @@ function App() {
               }
             />
             <Route
-              path="/analytics"
-              element={
-                <ProtectedRoute>
-                  <Layout>
-                    <Analytics />
-                  </Layout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
               path="/agents"
               element={
                 <ProtectedRoute>
@@ -118,11 +114,11 @@ function App() {
               }
             />
             <Route
-              path="/performance"
+              path="/knowledge-graph"
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <AgentPerformance />
+                    <KnowledgeGraphPage />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -143,6 +139,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <CrossDomainBridges />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/semantic-matrix"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SemanticMatrixPage />
                   </Layout>
                 </ProtectedRoute>
               }
@@ -177,9 +183,50 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/data/entities"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DataEntities />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/data/flows"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DataFlows />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/data/architecture"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DataArchitectureLayers />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/data/lineage"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <DataLineage />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
+        </UIThemeProvider>
       </AuthProvider>
     </ThemeProvider>
   );
