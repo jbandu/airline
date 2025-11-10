@@ -36,8 +36,12 @@ CREATE TRIGGER trigger_update_user_preferences_updated_at
   EXECUTE FUNCTION update_user_preferences_updated_at();
 
 -- Function to automatically create preferences for new users
+-- SECURITY DEFINER allows the function to bypass RLS policies
 CREATE OR REPLACE FUNCTION create_default_user_preferences()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
   INSERT INTO user_preferences (user_id, ui_theme)
   VALUES (NEW.id, 'palantir-dark')
