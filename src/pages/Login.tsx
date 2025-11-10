@@ -19,11 +19,35 @@ export const Login: React.FC = () => {
 
     try {
       if (isSignUp) {
-        const { error } = await signUp(email, password);
-        if (error) throw error;
+        const { data, error } = await signUp(email, password);
+        if (error) {
+          // Enhanced error handling for signup
+          if (error.message.includes('User already registered')) {
+            throw new Error('This email is already registered. Please sign in instead.');
+          } else if (error.status === 500 || error.message.includes('unexpected')) {
+            throw new Error('Server error during signup. This may be due to email confirmation settings. Please contact support or try again later.');
+          } else {
+            throw error;
+          }
+        }
+
+        // Check if email confirmation is required
+        if (data?.user && !data.session) {
+          setError('Please check your email to confirm your account before signing in.');
+          setLoading(false);
+          return;
+        }
       } else {
         const { error } = await signIn(email, password);
-        if (error) throw error;
+        if (error) {
+          if (error.message.includes('Invalid login credentials')) {
+            throw new Error('Invalid email or password. Please try again.');
+          } else if (error.message.includes('Email not confirmed')) {
+            throw new Error('Please confirm your email address before signing in. Check your inbox for the confirmation link.');
+          } else {
+            throw error;
+          }
+        }
       }
       navigate('/');
     } catch (err: any) {
