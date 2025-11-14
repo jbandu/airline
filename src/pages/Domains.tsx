@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Folder, Search, TrendingUp, Layers, Activity, Upload, X, Bot, Save } from 'lucide-react';
+import { Folder, Search, TrendingUp, Layers, Activity, Upload, X, Bot, Save, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Domain, Subdomain } from '../types/database.types';
@@ -36,7 +36,7 @@ export const Domains: React.FC = () => {
       const [domainsResult, subdomainsResult, workflowsResult] = await Promise.all([
         supabase.from('domains').select('*').order('name'),
         supabase.from('subdomains').select('*').order('name'),
-        supabase.from('workflows').select('agentic_function_type').is('archived_at', null),
+        supabase.from('workflows').select('subdomain_id, agentic_function_type').is('archived_at', null),
       ]);
 
       if (domainsResult.data && subdomainsResult.data) {
@@ -50,33 +50,32 @@ export const Domains: React.FC = () => {
         );
         setAgentCount(uniqueAgentTypes.size);
 
-        const domainsWithStats: DomainWithStats[] = await Promise.all(
-          domainsResult.data.map(async (domain) => {
-            const domainSubdomains = subdomainsResult.data.filter(
-              (sd) => sd.domain_id === domain.id
-            );
-            const subdomainCount = domainSubdomains.length;
+        // Count workflows by subdomain
+        const workflowCountBySubdomain = new Map<string, number>();
+        workflowsResult.data?.forEach((workflow) => {
+          if (workflow.subdomain_id) {
+            const currentCount = workflowCountBySubdomain.get(workflow.subdomain_id) || 0;
+            workflowCountBySubdomain.set(workflow.subdomain_id, currentCount + 1);
+          }
+        });
 
-            const subdomainIds = domainSubdomains.map(sd => sd.id);
+        const domainsWithStats: DomainWithStats[] = domainsResult.data.map((domain) => {
+          const domainSubdomains = subdomainsResult.data.filter(
+            (sd) => sd.domain_id === domain.id
+          );
+          const subdomainCount = domainSubdomains.length;
 
-            let workflowCount = 0;
-            if (subdomainIds.length > 0) {
-              const { count } = await supabase
-                .from('workflows')
-                .select('*', { count: 'exact', head: true })
-                .in('subdomain_id', subdomainIds)
-                .is('archived_at', null);
+          let workflowCount = 0;
+          domainSubdomains.forEach((subdomain) => {
+            workflowCount += workflowCountBySubdomain.get(subdomain.id) || 0;
+          });
 
-              workflowCount = count || 0;
-            }
-
-            return {
-              ...domain,
-              subdomainCount,
-              workflowCount,
-            };
-          })
-        );
+          return {
+            ...domain,
+            subdomainCount,
+            workflowCount,
+          };
+        });
 
         setDomains(domainsWithStats);
       }
@@ -255,6 +254,17 @@ export const Domains: React.FC = () => {
     setEditedDescription('');
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-cyan-300 text-lg">Loading domains...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-950 relative overflow-hidden">
       {/* Animated background */}
@@ -298,18 +308,23 @@ export const Domains: React.FC = () => {
             <p className="text-4xl font-bold text-white">{stats.totalSubdomains}</p>
             <p className="text-xs text-gray-500 mt-1">Functional areas</p>
           </div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-              <Bot className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+
+          <div className="glass rounded-2xl p-6 animate-fade-in animation-delay-400">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-400">Workflows</h3>
+              <Activity className="w-5 h-5 text-orange-400" />
             </div>
-            <div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">Agent Types</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white">{stats.agentTypes}</div>
+            <p className="text-4xl font-bold text-white">{stats.totalWorkflows}</p>
+            <p className="text-xs text-gray-500 mt-1">Total workflows</p>
+          </div>
+
+          <div className="glass rounded-2xl p-6 animate-fade-in animation-delay-600">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium text-gray-400">Agent Types</h3>
+              <Bot className="w-5 h-5 text-purple-400" />
             </div>
-            <p className="text-4xl font-bold text-white">{stats.avgSubdomainsPerDomain}</p>
-            <p className="text-xs text-gray-500 mt-1">Per domain</p>
+            <p className="text-4xl font-bold text-white">{stats.agentTypes}</p>
+            <p className="text-xs text-gray-500 mt-1">Unique agents</p>
           </div>
         </div>
 
