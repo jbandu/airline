@@ -45,22 +45,34 @@ Based on errors encountered, here are the **actual columns** that exist in your 
 - ❌ `created_at` - Probably does NOT exist
 - ❌ `updated_at` - Probably does NOT exist
 
-### `workflows` table (likely schema)
-- ✅ `id` (BIGINT)
+### `workflows` table (CORRECTED - actual schema)
+- ✅ `id` (UUID, auto-generated)
 - ✅ `name` (TEXT)
-- ✅ `subdomain_id` (BIGINT, FK to subdomains)
+- ✅ `subdomain_id` (UUID, FK to subdomains) - **NOTE: UUID, not BIGINT**
+- ✅ `domain_id` (UUID, FK to domains, nullable)
 - ✅ `description` (TEXT)
-- ✅ `wave` (INTEGER)
-- ✅ `status` (TEXT)
-- ✅ `complexity` (TEXT)
-- ✅ `business_value` (TEXT)
-- ✅ `technical_feasibility` (TEXT)
-- ✅ `effort_estimate` (TEXT)
-- ✅ `impact_score` (INTEGER)
-- ✅ `priority_score` (INTEGER)
-- ❌ `created_at` - Probably does NOT exist
-- ❌ `updated_at` - Probably does NOT exist
-- ❌ `created_by` - Probably does NOT exist
+- ✅ `implementation_wave` (INTEGER 1-3) - **NOT** `wave`
+- ✅ `complexity` (INTEGER 1-5) - **NOT** text values
+  - **Mapping**: 1-2 = Low, 3 = Medium, 4-5 = High
+- ✅ `status` (TEXT) - lowercase: 'draft', 'planned', 'in-progress', 'completed', 'archived'
+- ✅ `agentic_potential` (INTEGER 1-5)
+- ✅ `autonomy_level` (INTEGER 1-5)
+- ✅ `airline_type` (TEXT[])
+- ✅ `agentic_function_type` (TEXT)
+- ✅ `ai_enablers` (TEXT[])
+- ✅ `systems_involved` (TEXT[])
+- ✅ `business_context` (TEXT)
+- ✅ `expected_roi` (TEXT)
+- ✅ `dependencies` (TEXT[])
+- ✅ `success_metrics` (JSONB)
+- ✅ `version` (INTEGER, default 1)
+- ✅ `created_by` (UUID, nullable)
+- ✅ `created_at` (TIMESTAMPTZ, default now())
+- ✅ `updated_at` (TIMESTAMPTZ, default now())
+- ✅ `archived_at` (TIMESTAMPTZ, nullable)
+- ✅ `parent_workflow_id` (UUID, FK to workflows, nullable)
+- ❌ `wave` - Does NOT exist (use `implementation_wave`)
+- ❌ `business_value`, `technical_feasibility`, `effort_estimate`, `impact_score`, `priority_score` - Do NOT exist
 
 ## 🎯 Migration Strategy
 
